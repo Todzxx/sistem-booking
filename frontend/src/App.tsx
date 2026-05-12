@@ -1,5 +1,21 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
+
+import { Navbar } from "@/components/navbar";
+import { Sidebar } from "@/components/sidebar";
+import ProtectedRoute from "@/components/ProtectedRoute";
+
+const LoginPage = lazy(() => import("@/pages/auth/login"));
+const RegisterPage = lazy(() => import("@/pages/auth/register"));
+const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
+const AdminUsers = lazy(() => import("@/pages/admin/users"));
+const BookingsPage = lazy(() => import("@/pages/user/bookings"));
+const CalendarPage = lazy(() => import("@/pages/user/calendar"));
+const DashboardPage = lazy(() => import("@/pages/user/dashboard"));
+const FacilitiesPage = lazy(() => import("@/pages/user/facilities"));
+const HelpPage = lazy(() => import("@/pages/user/help"));
+const NotificationsPage = lazy(() => import("@/pages/user/notifications"));
+const ProfilePage = lazy(() => import("@/pages/user/profile"));
 
 function PageLoader() {
   return (
@@ -27,18 +43,35 @@ function App() {
       />
 
       <div className="flex flex-col lg:flex-row min-h-screen w-full">
+        <Sidebar />
         <div className="flex flex-col flex-1 w-full">
+          <Navbar />
           <main className="container mx-auto max-w-7xl pt-12 px-6 flex-grow pb-20">
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <div className="flex items-center justify-center h-64">
-                      <p className="text-default-400">Welcome to RoomSync</p>
-                    </div>
-                  }
-                />
+                <Route element={<LoginPage />} path="/login" />
+                <Route element={<RegisterPage />} path="/register" />
+
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<FacilitiesPage />} path="/facilities" />
+                  <Route element={<BookingsPage />} path="/bookings" />
+                  <Route element={<CalendarPage />} path="/calendar" />
+                  <Route
+                    element={<NotificationsPage />}
+                    path="/notifications"
+                  />
+                  <Route element={<HelpPage />} path="/help" />
+                  <Route element={<ProfilePage />} path="/profile" />
+                </Route>
+
+                <Route element={<ProtectedRoute userOnly />}>
+                  <Route element={<DashboardPage />} path="/" />
+                </Route>
+
+                <Route element={<ProtectedRoute adminOnly />}>
+                  <Route element={<AdminDashboard />} path="/admin" />
+                  <Route element={<AdminUsers />} path="/admin/users" />
+                </Route>
               </Routes>
             </Suspense>
           </main>
