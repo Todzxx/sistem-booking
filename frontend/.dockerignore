@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.git.backup
+.env
+.env.local
+*.md
+.gitignore
+.npmrc
+eslint.config.mjs
+tsconfig.json
+tsconfig.node.json
+postcss.config.js

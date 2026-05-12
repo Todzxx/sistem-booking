@@ -1,0 +1,54 @@
+{
+  "name": "backend-sistem-booking-ruangan-fasilitas",
+  "version": "1.0.0",
+  "description": "Aplikasi web untuk mengelola peminjaman ruangan dan fasilitas seperti laboratorium, ruang rapat, dan proyektor agar tidak terjadi bentrok jadwal. Pengguna dapat mengecek ketersediaan dan mengajukan booking, lalu setiap pengajuan akan melalui proses approval admin sebelum dinyatakan valid dan dapat digunakan.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "db:push": "npx drizzle-kit push",
+    "db:studio": "npx drizzle-kit studio",
+    "db:generate": "npx drizzle-kit generate",
+    "db:migrate": "npx drizzle-kit migrate",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Todzxx/backend-Sistem-Booking-Ruangan-Fasilitas.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Todzxx/backend-Sistem-Booking-Ruangan-Fasilitas/issues"
+  },
+  "homepage": "https://github.com/Todzxx/backend-Sistem-Booking-Ruangan-Fasilitas#readme",
+  "dependencies": {
+    "axios": "^1.15.2",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "googleapis": "^171.4.0",
+    "helmet": "^8.1.0",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "mysql2": "^3.22.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "form-data": "^4.0.5",
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  }
+}
