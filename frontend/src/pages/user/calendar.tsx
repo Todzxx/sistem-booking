@@ -1,0 +1,621 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, Chip, Button } from "@heroui/react";
+import {
+  Search,
+  Calendar,
+  ChevronRight,
+  Clock,
+  User,
+  Hash,
+  RefreshCw,
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+
+import api from "@/config/api";
+import { LOCALE } from "@/config/locale";
+
+// ─── Color palette per facility (cycles through if more than 6) ───────────────
+const FACILITY_COLORS = [
+  {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/30",
+    text: "text-blue-500",
+    dot: "bg-blue-500",
+    activeBg: "bg-blue-600",
+    activeShadow: "shadow-blue-500/30",
+    strip: "border-l-blue-500",
+  },
+  {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    text: "text-emerald-500",
+    dot: "bg-emerald-500",
+    activeBg: "bg-emerald-600",
+    activeShadow: "shadow-emerald-500/30",
+    strip: "border-l-emerald-500",
+  },
+  {
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/30",
+    text: "text-violet-500",
+    dot: "bg-violet-500",
+    activeBg: "bg-violet-600",
+    activeShadow: "shadow-violet-500/30",
+    strip: "border-l-violet-500",
+  },
+  {
+    bg: "bg-orange-500/10",
+    border: "border-orange-500/30",
+    text: "text-orange-500",
+    dot: "bg-orange-500",
+    activeBg: "bg-orange-600",
+    activeShadow: "shadow-orange-500/30",
+    strip: "border-l-orange-500",
+  },
+  {
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/30",
+    text: "text-rose-500",
+    dot: "bg-rose-500",
+    activeBg: "bg-rose-600",
+    activeShadow: "shadow-rose-500/30",
+    strip: "border-l-rose-500",
+  },
+  {
+    bg: "bg-cyan-500/10",
+    border: "border-cyan-500/30",
+    text: "text-cyan-500",
+    dot: "bg-cyan-500",
+    activeBg: "bg-cyan-600",
+    activeShadow: "shadow-cyan-500/30",
+    strip: "border-l-cyan-500",
+  },
+];
+
+function getFacilityColor(facility: any, fallbackIndex: number) {
+  const name = (facility?.name || "").toLowerCase();
+
+  if (name.includes("collaboration zone b")) return FACILITY_COLORS[0];
+  if (name.includes("creative design studio")) return FACILITY_COLORS[1];
+  if (name.includes("executive meeting room")) return FACILITY_COLORS[4];
+
+  return FACILITY_COLORS[fallbackIndex % FACILITY_COLORS.length];
+}
+
+export default function CalendarPage() {
+  const [facilities, setFacilities] = useState<any[]>([]);
+  const [selectedFacility, setSelectedFacility] = useState<string | null>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const response = await api.get("/facilities");
+        const data = response.data.data?.facilities || response.data.data || [];
+
+        setFacilities(Array.isArray(data) ? data : []);
+        if (data.length > 0) setSelectedFacility(data[0].id);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Error fetching facilities", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFacilities();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFacility) return;
+    const fetchFacilityBookings = async () => {
+      setBookingsLoading(true);
+      try {
+        const response = await api.get(
+          `/bookings/facility/${selectedFacility}`,
+        );
+
+        setBookings(response.data.data || []);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Error fetching facility bookings", err);
+        setBookings([]);
+      } finally {
+        setBookingsLoading(false);
+      }
+    };
+
+    fetchFacilityBookings();
+  }, [selectedFacility]);
+
+  // Map facility ID → color index
+  const facilityColorMap: Record<string, number> = {};
+
+  facilities.forEach((f, i) => {
+    facilityColorMap[f.id] = i % FACILITY_COLORS.length;
+  });
+
+  const selectedFacilityData = facilities.find(
+    (f) => f.id === selectedFacility,
+  );
+  const selectedColorIdx =
+    selectedFacility !== null ? (facilityColorMap[selectedFacility] ?? 0) : 0;
+  const selectedColor = getFacilityColor(
+    selectedFacilityData,
+    selectedColorIdx,
+  );
+
+  // Count recurring group sizes
+  const groupCounts: Record<string, number> = {};
+
+  for (const b of bookings) {
+    if (b.recurrenceGroupId) {
+      groupCounts[b.recurrenceGroupId] =
+        (groupCounts[b.recurrenceGroupId] || 0) + 1;
+    }
+  }
+
+  // Deduplicate by ID only (API safety net), keep ALL dates visible
+  const uniqueBookings: any[] = [];
+  const seenIds = new Set<string>();
+
+  for (const b of bookings) {
+    if (!seenIds.has(b.id)) {
+      seenIds.add(b.id);
+      uniqueBookings.push({
+        ...b,
+        _groupTotal: b.recurrenceGroupId
+          ? groupCounts[b.recurrenceGroupId]
+          : undefined,
+      });
+    }
+  }
+  uniqueBookings.sort(
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+  );
+
+  // Quick stats
+  const approvedCount = uniqueBookings.filter(
+    (b) => b.status === "APPROVED",
+  ).length;
+  const pendingCount = uniqueBookings.filter(
+    (b) => b.status === "PENDING",
+  ).length;
+
+  // Group by calendar date
+  const groupedByDate: Record<string, any[]> = {};
+
+  for (const b of uniqueBookings) {
+    const dateKey = new Date(b.startTime).toLocaleDateString(LOCALE, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+    groupedByDate[dateKey].push(b);
+  }
+
+  const compactedByDate = Object.fromEntries(
+    Object.entries(groupedByDate).map(([date, dayBookings]) => {
+      const slotMap = new Map<string, any[]>();
+
+      for (const booking of dayBookings) {
+        const slotKey = `${booking.startTime}-${booking.endTime}`;
+        const slotBookings = slotMap.get(slotKey) || [];
+
+        slotBookings.push(booking);
+        slotMap.set(slotKey, slotBookings);
+      }
+
+      return [date, Array.from(slotMap.values())];
+    }),
+  );
+
+  const selectedName =
+    facilities.find((f) => f.id === selectedFacility)?.name || "Select a Room";
+
+  return (
+    <div className="flex flex-col gap-8 max-w-6xl mx-auto py-8 px-4">
+      {/* Page header */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">
+          Facility Schedule
+        </h1>
+        <p className="text-muted font-medium text-lg">
+          Check real-time availability and planned usage.
+        </p>
+      </div>
+
+      {/* Two-column layout */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* ── Sidebar: fixed width ── */}
+        <aside className="w-full lg:w-52 shrink-0 flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-default-400 px-1">
+            <Search size={14} />
+            <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+              Rooms &amp; Spaces
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {loading ? (
+              <div className="animate-pulse flex flex-col gap-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-14 bg-default-100 rounded-2xl" />
+                ))}
+              </div>
+            ) : (
+              facilities.map((f, idx) => {
+                const color = getFacilityColor(f, idx);
+                const isSelected = selectedFacility === f.id;
+
+                return (
+                  <button
+                    key={f.id}
+                    className={`
+                      w-full text-left flex items-center gap-3
+                      px-4 py-3 rounded-2xl border-2 transition-all duration-200
+                      ${
+                        isSelected
+                          ? `${color.activeBg} text-white border-transparent shadow-lg ${color.activeShadow}`
+                          : `bg-background ${color.border} hover:${color.bg} hover:border-opacity-60`
+                      }
+                    `}
+                    onClick={() => setSelectedFacility(f.id)}
+                  >
+                    {/* Color dot */}
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                        isSelected ? "bg-white/70" : color.dot
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`font-black text-xs truncate ${
+                          isSelected ? "text-white" : "text-default-700"
+                        }`}
+                      >
+                        {f.name}
+                      </p>
+                      <p
+                        className={`text-[9px] font-bold uppercase tracking-widest ${
+                          isSelected ? "text-white/60" : "text-default-400"
+                        }`}
+                      >
+                        {f.capacity} seats
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <ChevronRight
+                        className="shrink-0 text-white/70"
+                        size={14}
+                      />
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Color legend */}
+          {!loading && facilities.length > 0 && (
+            <div className="mt-2 p-3 bg-default-50 rounded-2xl border border-default-100">
+              <p className="text-[9px] font-black text-default-400 uppercase tracking-widest mb-2">
+                Color Legend
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {facilities.map((f, idx) => {
+                  const color = getFacilityColor(f, idx);
+
+                  return (
+                    <div key={f.id} className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${color.dot}`}
+                      />
+                      <span className="text-[9px] font-bold text-default-500 truncate">
+                        {f.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* ── Main: timeline ── */}
+        <div className="flex-1 min-w-0">
+          <Card className="rounded-xl border border-default-200 shadow-xl bg-background/60 backdrop-blur-md overflow-hidden min-h-[480px]">
+            {/* Card header */}
+            <Card.Header
+              className={`px-8 py-6 border-b border-default-100 flex flex-col gap-4`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div
+                    className={`p-3 ${selectedColor.bg} rounded-2xl ${selectedColor.text} shrink-0`}
+                  >
+                    <Calendar size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-black text-foreground tracking-tight">
+                      Timeline Overview
+                    </h3>
+                    <p
+                      className={`text-xs font-bold uppercase tracking-widest truncate ${selectedColor.text}`}
+                    >
+                      {selectedName}
+                    </p>
+                  </div>
+                </div>
+                {uniqueBookings.length > 0 && (
+                  <span className="shrink-0 text-[10px] font-bold text-default-400 bg-default-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
+                    {uniqueBookings.length} events
+                  </span>
+                )}
+              </div>
+
+              {/* Quick stats row */}
+              {uniqueBookings.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl ${selectedColor.bg} ${selectedColor.border} border`}
+                  >
+                    <TrendingUp
+                      className={`shrink-0 ${selectedColor.text}`}
+                      size={14}
+                    />
+                    <div>
+                      <p className="text-[9px] font-black text-default-400 uppercase tracking-widest">
+                        Total
+                      </p>
+                      <p className={`text-sm font-black ${selectedColor.text}`}>
+                        {uniqueBookings.length}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success/10 border border-success/20">
+                    <CheckCircle2 className="shrink-0 text-success" size={14} />
+                    <div>
+                      <p className="text-[9px] font-black text-default-400 uppercase tracking-widest">
+                        Approved
+                      </p>
+                      <p className="text-sm font-black text-success">
+                        {approvedCount}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-warning/10 border border-warning/20">
+                    <AlertCircle className="shrink-0 text-warning" size={14} />
+                    <div>
+                      <p className="text-[9px] font-black text-default-400 uppercase tracking-widest">
+                        Pending
+                      </p>
+                      <p className="text-sm font-black text-warning">
+                        {pendingCount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card.Header>
+
+            {/* Card body */}
+            <Card.Content className="p-0">
+              {bookingsLoading ? (
+                <div className="flex flex-col items-center justify-center py-28 gap-4">
+                  <div
+                    className={`animate-spin rounded-full h-10 w-10 border-b-4 ${selectedColor.text.replace("text-", "border-")}`}
+                  />
+                  <p className="text-default-400 font-bold uppercase tracking-widest text-[10px]">
+                    Syncing Schedule...
+                  </p>
+                </div>
+              ) : uniqueBookings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center px-8">
+                  <div
+                    className={`w-20 h-20 ${selectedColor.bg} rounded-xl flex items-center justify-center mb-6 border-2 ${selectedColor.border} ${selectedColor.text}`}
+                  >
+                    <Clock size={36} />
+                  </div>
+                  <p className="text-xl font-black text-default-400">
+                    Empty Slots
+                  </p>
+                  <p className="text-default-400 font-medium mt-2 max-w-xs">
+                    <span className={`font-black ${selectedColor.text}`}>
+                      {selectedName}
+                    </span>{" "}
+                    is fully available. Be the first to reserve it!
+                  </p>
+                  <Button
+                    className="mt-6 h-11 rounded-2xl font-bold px-8"
+                    variant="primary"
+                    onPress={() => navigate("/facilities")}
+                  >
+                    Book Now
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {Object.entries(compactedByDate).map(([date, daySlots]) => (
+                    <div key={date}>
+                      {/* Date header */}
+                      <div
+                        className={`px-6 py-2.5 border-y border-default-100 flex items-center justify-between gap-2 ${selectedColor.bg}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedColor.dot}`}
+                          />
+                          <span className="text-[10px] font-black text-default-600 uppercase tracking-widest">
+                            {date}
+                          </span>
+                        </div>
+                        <span
+                          className={`shrink-0 text-[9px] font-bold ${selectedColor.text} ${selectedColor.bg} px-2 py-0.5 rounded-full border ${selectedColor.border}`}
+                        >
+                          {daySlots.reduce(
+                            (total, slot: any[]) => total + slot.length,
+                            0,
+                          )}{" "}
+                          event{daySlots.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      {/* Event rows */}
+                      {daySlots.map((slotBookings: any[]) => {
+                        const b = slotBookings[0];
+                        const now = new Date();
+                        const start = new Date(b.startTime);
+                        const end = new Date(b.endTime);
+                        const isLive = now >= start && now <= end;
+                        const durationMins = Math.round(
+                          (end.getTime() - start.getTime()) / (1000 * 60),
+                        );
+                        const isCompact = slotBookings.length > 1;
+                        const slotTitle = slotBookings
+                          .map(
+                            (item) =>
+                              `${item.purpose} - ${item.user?.name || "Member"} (${item.status})`,
+                          )
+                          .join("\n");
+
+                        return (
+                          <div
+                            key={`${b.startTime}-${b.endTime}-${slotBookings.length}`}
+                            className={`
+                              flex flex-col sm:flex-row sm:items-center gap-4
+                              px-6 py-4 border-b border-default-50 last:border-0
+                              hover:bg-default-50/50 transition-colors duration-150
+                              ${isLive ? `border-l-4 ${selectedColor.strip} ${selectedColor.bg}` : ""}
+                            `}
+                            title={slotTitle}
+                          >
+                            {/* Left accent bar */}
+                            <div
+                              className={`hidden sm:block w-1 self-stretch rounded-full shrink-0 ${selectedColor.dot} opacity-40`}
+                            />
+
+                            {/* Purpose + badges */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <Hash
+                                  className={`${selectedColor.text} shrink-0`}
+                                  size={10}
+                                />
+                                <span className="text-[9px] font-black text-default-300 uppercase tracking-widest">
+                                  #{b.id.substring(0, 8)}
+                                </span>
+                                {isLive && (
+                                  <Chip
+                                    className="h-4 text-[7px] font-black animate-pulse"
+                                    color="danger"
+                                    size="sm"
+                                    variant="soft"
+                                  >
+                                    LIVE
+                                  </Chip>
+                                )}
+                              </div>
+                              <p className="text-sm font-black text-foreground truncate mb-1.5">
+                                {isCompact
+                                  ? `${slotBookings.length} bookings in this slot`
+                                  : b.purpose}
+                              </p>
+                              <div className="flex gap-1.5 flex-wrap">
+                                {isCompact && (
+                                  <Chip
+                                    className={`h-5 text-[8px] font-black uppercase px-2 ${selectedColor.text}`}
+                                    size="sm"
+                                    variant="soft"
+                                  >
+                                    Hover for details
+                                  </Chip>
+                                )}
+                                <Chip
+                                  className="h-5 text-[8px] font-black uppercase px-2"
+                                  color={
+                                    b.status === "APPROVED"
+                                      ? "success"
+                                      : b.status === "PENDING"
+                                        ? "warning"
+                                        : "danger"
+                                  }
+                                  size="sm"
+                                  variant="soft"
+                                >
+                                  {b.status}
+                                </Chip>
+                                {b._groupTotal && b._groupTotal > 1 && (
+                                  <Chip
+                                    className={`h-5 text-[8px] font-black uppercase px-2 ${selectedColor.text}`}
+                                    size="sm"
+                                    variant="soft"
+                                  >
+                                    <RefreshCw className="mr-0.5" size={7} />
+                                    {b._groupTotal}-series
+                                  </Chip>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Time */}
+                            <div className="shrink-0 flex flex-col gap-0.5 sm:text-right">
+                              <div className="flex items-center gap-1.5 font-black text-sm text-default-700">
+                                <Clock
+                                  className={`${selectedColor.text} shrink-0`}
+                                  size={12}
+                                />
+                                {start.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                                {" — "}
+                                {end.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                              <p className="text-[9px] font-bold text-default-400 pl-[18px] uppercase">
+                                {durationMins} min
+                              </p>
+                            </div>
+
+                            {/* User avatar */}
+                            <div className="shrink-0 flex items-center gap-2">
+                              <div className="text-right hidden sm:block">
+                                <p className="text-xs font-black text-foreground">
+                                  {b.user?.name || "Member"}
+                                </p>
+                                <p className="text-[9px] font-bold text-default-400">
+                                  Verified
+                                </p>
+                              </div>
+                              <div
+                                className={`w-8 h-8 rounded-xl ${selectedColor.bg} flex items-center justify-center ${selectedColor.text} border ${selectedColor.border} shrink-0`}
+                              >
+                                <User size={14} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card.Content>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
