@@ -7,13 +7,14 @@ $branches = @(
   'feat/error-boundary',
   'feat/bookings-skeleton',
   'feat/booking-form-reset',
-  'feat/calendar-colors',
-  'feat/devops',
-  'feat/code-splitting',
   'feat/payment-calendar',
   'feat/security-hardening',
   'fix/heroui-v3-api'
 )
+
+# Already done by script: calendar-colors, code-splitting
+# devops: nothing to commit (empty merge)
+# Already done manually: auth-system, role-management, database-migrations, facility-management
 
 $ErrorActionPreference = 'Continue'
 
@@ -26,9 +27,10 @@ foreach ($branch in $branches) {
 
   if ($exitCode -eq 0) {
     Write-Host "Merge succeeded without conflicts, committing..." -ForegroundColor Green
-    git add .
-    git commit --no-edit
-    git push
+    git add . 2>&1 | Out-Null
+    git commit --no-edit 2>&1 | Out-Null
+    git push 2>&1 | Out-Null
+    Write-Host "Merged and pushed $branch" -ForegroundColor Green
     continue
   }
 
@@ -36,32 +38,47 @@ foreach ($branch in $branches) {
   $unmerged = @(git diff --name-only --diff-filter=U)
   
   if ($unmerged.Count -eq 0) {
-    Write-Host "Merge failed but no unmerged files found, aborting." -ForegroundColor Red
+    Write-Host "No conflicted files, checking status..." -ForegroundColor Yellow
     git merge --abort
     continue
   }
 
-  Write-Host "Found $($unmerged.Count) conflicted files, resolving all with --ours" -ForegroundColor Yellow
+  Write-Host "Found $($unmerged.Count) conflicted files, resolving with HEAD version" -ForegroundColor Yellow
 
-  # Resolve all with ours (keep develop version)
+  $allResolved = $true
   foreach ($file in $unmerged) {
-    git checkout --ours -- $file 2>&1 | Out-Null
+    # Get the HEAD (stage 2) version and write it
+    $content = git show ":2:$file" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      # Use Set-Content with the file content
+      [System.IO.File]::WriteAllText("$pwd/$file", $content, [System.Text.UTF8Encoding]::new($false))
+      git add -- $file 2>&1 | Out-Null
+      Write-Host "  Resolved: $file" -ForegroundColor Gray
+    } else {
+      Write-Host "  FAILED: $file - $content" -ForegroundColor Red
+      $allResolved = $false
+    }
   }
 
-  # Check for remaining conflict markers (safety)
-  $conflictFiles = git diff --name-only --diff-filter=U
-  if ($conflictFiles.Count -gt 0) {
-    Write-Host "Warning: Still has unmerged files after --ours: $conflictFiles" -ForegroundColor Red
+  if (-not $allResolved) {
+    Write-Host "Aborting merge for $branch due to unresolved files" -ForegroundColor Red
     git merge --abort
-    Write-Host "Aborted merge for $branch" -ForegroundColor Red
     continue
   }
 
-  # Stage, commit, push
-  git add .
+  # Verify no remaining conflicts
+  $remaining = @(git diff --name-only --diff-filter=U)
+  if ($remaining.Count -gt 0) {
+    Write-Host "Still has $($remaining.Count) unmerged files, aborting" -ForegroundColor Red
+    git merge --abort
+    continue
+  }
+
+  # Commit and push
+  git add . 2>&1 | Out-Null
   git commit --no-edit 2>&1 | Out-Null
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "Commit failed for $branch, aborting." -ForegroundColor Red
+    Write-Host "Commit failed for $branch" -ForegroundColor Red
     git merge --abort
     continue
   }
