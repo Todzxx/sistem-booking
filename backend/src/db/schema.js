@@ -4,7 +4,6 @@ const { sql, relations } = require('drizzle-orm');
 // Nilai-nilai Enum
 const ROLE = ['USER', 'ADMIN'];
 const STATUS = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'];
-const PAYMENT = ['UNPAID', 'PAID', 'REFUNDED'];
 
 const users = mysqlTable('users', {
   id: varchar('id', { length: 36 }).primaryKey().default(sql`(uuid())`),
@@ -12,7 +11,6 @@ const users = mysqlTable('users', {
   email: varchar('email', { length: 255 }).unique().notNull(),
   password: varchar('password', { length: 255 }).notNull(),
   role: mysqlEnum('role', ROLE).default('USER').notNull(),
-  googleRefreshToken: text('google_refresh_token'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').onUpdateNow(),
 }, (table) => ({
@@ -42,11 +40,6 @@ const bookings = mysqlTable('bookings', {
   status: mysqlEnum('status', STATUS).default('PENDING').notNull(),
   notes: text('notes'),
   recurrenceGroupId: varchar('recurrence_group_id', { length: 36 }),
-  googleEventId: varchar('google_event_id', { length: 255 }),
-  paymentStatus: mysqlEnum('payment_status', PAYMENT).default('UNPAID').notNull(),
-  paymentMethod: varchar('payment_method', { length: 50 }),
-  depositAmount: int('deposit_amount').default(0).notNull(),
-  paidAt: timestamp('paid_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').onUpdateNow(),
 }, (table) => ({
