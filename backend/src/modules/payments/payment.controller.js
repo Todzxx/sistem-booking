@@ -1,0 +1,42 @@
+const paymentService = require('./payment.service');
+const { success } = require('../../utils/responseHandler');
+const AppError = require('../../utils/AppError');
+
+const PAYMENT_METHODS = ['BANK_TRANSFER', 'CASH', 'E_WALLET'];
+
+const paymentController = {
+  payDeposit: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { paymentMethod } = req.body;
+      if (!paymentMethod || !PAYMENT_METHODS.includes(paymentMethod)) {
+        throw new AppError('Invalid payment method. Choose: ' + PAYMENT_METHODS.join(', '), 400);
+      }
+      const data = await paymentService.payDeposit(id, req.user.id, paymentMethod);
+      return success(res, 'Deposit paid successfully', data);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  refundDeposit: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = await paymentService.refundDeposit(id);
+      return success(res, 'Deposit refunded successfully', data);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  getPaymentSummary: async (req, res, next) => {
+    try {
+      const data = await paymentService.getPaymentSummary();
+      return success(res, 'Payment summary retrieved', data);
+    } catch (error) {
+      next(error);
+    }
+  },
+};
+
+module.exports = paymentController;
