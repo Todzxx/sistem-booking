@@ -1,4 +1,6 @@
 const { EventEmitter } = require('events');
+const { db } = require('../config/db');
+const { notifications } = require('../db/schema');
 
 const notificationEmitter = new EventEmitter();
 const userConnections = new Map();
@@ -31,7 +33,21 @@ const notificationService = {
     }
   },
 
-  emitBookingEvent: (eventType, booking, userId) => {
+  saveNotification: async (data) => {
+    try {
+      await db.insert(notifications).values({
+        userId: data.userId,
+        title: data.title,
+        message: data.message,
+        type: data.type,
+        bookingId: data.bookingId,
+      });
+    } catch (error) {
+      console.error('Failed to save notification:', error);
+    }
+  },
+
+  emitBookingEvent: async (eventType, booking, userId) => {
     const notification = {
       type: eventType,
       bookingId: booking.id,
@@ -61,6 +77,15 @@ const notificationService = {
         notification.message = `Your booking for ${notification.facilityName} has been cancelled.`;
         break;
     }
+
+    // Persist to DB
+    await notificationService.saveNotification({
+      userId,
+      title: notification.title,
+      message: notification.message,
+      type: eventType,
+      bookingId: booking.id,
+    });
 
     notificationService.sendToUser(userId, notification);
     notificationEmitter.emit('notification', notification);
