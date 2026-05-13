@@ -1,9 +1,11 @@
+// ============================================================
+// FILE: utils/dbHelper.js
+// Helper untuk operasi database umum
+// createAndFetch: insert data lalu SELECT kembali — return record lengkap
+// ============================================================
+
 const { eq } = require('drizzle-orm');
 
-/**
- * Fungsi pembantu (helper) untuk memasukkan data dan mengambil kembali datanya menggunakan ID
- * Berguna untuk menghilangkan penulisan kode insert-dan-fetch yang berulang
- */
 const createAndFetch = async (table, data, tx = null) => {
   const db = tx || require('../config/db').db;
 

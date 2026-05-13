@@ -1,12 +1,15 @@
-/**
- * Abstraksi penyimpanan token yang dicabut (revocation store).
- * Menggunakan database MySQL (via Drizzle ORM) untuk penyimpanan yang persisten.
- */
+// ============================================================
+// FILE: utils/revocationStore.js
+// Penyimpanan token yang dicabut (revoked) di database MySQL
+// Digunakan untuk logout dan rotasi refresh token (cegah replay attack)
+// ============================================================
 
 const { db } = require('../config/db');
 const { revokedTokens } = require('../db/schema');
 const { eq, lte } = require('drizzle-orm');
 
+// Cek apakah suatu jti sudah pernah dicabut
+// Fail-closed: jika DB error, anggap revoked (lebih aman)
 const isRevoked = async (jti) => {
   if (!jti) return false;
   try {
@@ -14,38 +17,33 @@ const isRevoked = async (jti) => {
     return result.length > 0;
   } catch (error) {
     console.error('Error checking revoked token (failing closed):', error);
-    return true; // Fail closed: reject token jika DB error, lebih aman daripada false positive
+    return true;
   }
 };
 
+// Deteksi error duplicate entry dari MySQL (errno 1062)
 const isDuplicateJtiError = (error) => {
   const code = error?.code || error?.cause?.code;
   const errno = error?.errno || error?.cause?.errno;
   return code === 'ER_DUP_ENTRY' || errno === 1062;
 };
 
+// Revoke token: simpan jti ke tabel revoked_tokens
+// Jika jti sudah ada (duplicate), berarti token sudah pernah dicabut — return false
 const revoke = async (jti, exp) => {
   if (!jti) return false;
   try {
-    // exp adalah masa kedaluwarsa token dalam format UNIX timestamp (detik)
     const now = Math.floor(Date.now() / 1000);
-    const expiresAt = exp && exp > now ? exp : now + (7 * 24 * 60 * 60);
+    const expiresAt = exp && exp > now ? exp : now + (7 * 24 * 60 * 60); // default 7 hari
 
-    // Insert bersifat atomic: jika jti sudah ada, token sudah pernah dicabut/dipakai.
     try {
-      await db.insert(revokedTokens).values({
-        jti,
-        expiresAt,
-      });
+      await db.insert(revokedTokens).values({ jti, expiresAt });
     } catch (insertError) {
-      if (isDuplicateJtiError(insertError)) {
-        return false;
-      }
-
+      if (isDuplicateJtiError(insertError)) return false;
       throw insertError;
     }
 
-    // Bersihkan token yang sudah lewat masa kedaluwarsanya untuk menghemat kapasitas db
+    // Bersihkan token expired untuk efisiensi storage
     try {
       await db.delete(revokedTokens).where(lte(revokedTokens.expiresAt, now));
     } catch (cleanupError) {
@@ -59,7 +57,4 @@ const revoke = async (jti, exp) => {
   }
 };
 
-module.exports = {
-  isRevoked,
-  revoke,
-};
+module.exports = { isRevoked, revoke };

@@ -1,3 +1,9 @@
+// ============================================================
+// FILE: modules/notifications/notification.routes.js
+// Route notifikasi — GET daftar notifikasi + SSE streaming real-time
+// Dipasang di /api/v1/notifications oleh app.js
+// ============================================================
+
 const express = require('express');
 const authMiddleware = require('../../middleware/auth.middleware');
 const { notificationService } = require('../../services/notificationService');
@@ -7,20 +13,9 @@ const { eq, desc } = require('drizzle-orm');
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware); // Semua route notifikasi butuh login
 
-/**
- * @swagger
- * /notifications:
- *   get:
- *     tags: [Notifications]
- *     summary: Get user's notifications
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of notifications
- */
+// GET /notifications — ambil 50 notifikasi terbaru milik user
 router.get('/', async (req, res, next) => {
   try {
     const userNotifications = await db.query.notifications.findMany({
@@ -28,32 +23,11 @@ router.get('/', async (req, res, next) => {
       orderBy: [desc(notifications.createdAt)],
       limit: 50,
     });
-    res.json({
-      status: 'success',
-      data: userNotifications,
-    });
-  } catch (error) {
-    next(error);
-  }
+    res.json({ status: 'success', data: userNotifications });
+  } catch (error) { next(error); }
 });
 
-/**
- * @swagger
- * /notifications/stream:
- *   get:
- *     tags: [Notifications]
- *     summary: SSE endpoint for real-time notifications
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: SSE stream
- *         content:
- *           text/event-stream:
- *             schema:
- *               type: string
- *               example: "data: {\"type\":\"CONNECTED\"}\n\n"
- */
+// GET /notifications/stream — SSE endpoint untuk notifikasi real-time
 router.get('/stream', authMiddleware, async (req, res, next) => {
   try {
     res.writeHead(200, {
@@ -66,9 +40,7 @@ router.get('/stream', authMiddleware, async (req, res, next) => {
     res.write(`data: ${JSON.stringify({ type: 'CONNECTED' })}\n\n`);
 
     notificationService.subscribe(req.user.id, res);
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 });
 
 module.exports = router;
