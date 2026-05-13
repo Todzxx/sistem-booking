@@ -5,12 +5,14 @@ const facilityValidation = {
     name: Joi.string().min(3).required(),
     description: Joi.string().allow('', null),
     capacity: Joi.number().integer().min(1).required(),
+    depositAmount: Joi.number().min(0).precision(2).default(0),
   }),
 
   update: Joi.object({
     name: Joi.string().min(3),
     description: Joi.string().allow('', null),
     capacity: Joi.number().integer().min(1),
+    depositAmount: Joi.number().min(0).precision(2),
   }),
 
   pagination: Joi.object({
