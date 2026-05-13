@@ -135,12 +135,18 @@ const googleCalendarService = {
     }
   },
 
-  deleteEvent: async (bookingId) => {
+  deleteEvent: async (bookingId, userId, userRole = 'USER') => {
     const booking = await db.query.bookings.findFirst({
       where: eq(bookings.id, bookingId),
     });
 
-    if (!booking || !booking.googleEventId) {
+    if (!booking) {
+      throw new AppError('Booking not found', 404);
+    }
+    if (booking.userId !== userId && userRole !== 'ADMIN') {
+      throw new AppError('Not authorized to delete this event', 403);
+    }
+    if (!booking.googleEventId) {
       return;
     }
 

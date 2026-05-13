@@ -26,7 +26,7 @@ describe('Booking concurrency', () => {
   test('should not allow double booking when requests are concurrent', async () => {
     // Prepare two booking payloads for same facility/time
     const payload = {
-      facilityId: 'test-facility',
+      facilityId: '550e8400-e29b-41d4-a716-446655440000',
       startTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
       purpose: 'Test meeting',
