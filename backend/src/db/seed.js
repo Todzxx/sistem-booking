@@ -13,6 +13,7 @@ async function seed() {
       description: 'Ruang auditorium besar dengan kapasitas 200 orang, cocok untuk seminar, wisuda, dan konferensi besar.',
       capacity: 200,
       imageUrl: '/uploads/auditorium.png',
+      depositAmount: '500000.00',
       isActive: true,
     },
     {
@@ -21,6 +22,7 @@ async function seed() {
       description: 'Ruang rapat mewah untuk dewan direksi atau pertemuan VIP. Dilengkapi dengan layar 4K dan sound system premium.',
       capacity: 12,
       imageUrl: '/uploads/meeting.png',
+      depositAmount: '200000.00',
       isActive: true,
     },
     {
@@ -29,6 +31,7 @@ async function seed() {
       description: 'Ruang kerja kolaboratif yang menginspirasi, dilengkapi dengan peralatan desain dan suasana santai.',
       capacity: 15,
       imageUrl: '/uploads/creative.png',
+      depositAmount: '100000.00',
       isActive: true,
     },
     {
@@ -37,6 +40,7 @@ async function seed() {
       description: 'Studio kedap suara dengan peralatan rekaman profesional untuk produksi podcast berkualitas tinggi.',
       capacity: 4,
       imageUrl: '/uploads/podcast.png',
+      depositAmount: '50000.00',
       isActive: true,
     },
     {
@@ -45,6 +49,7 @@ async function seed() {
       description: 'Area terbuka untuk kerja kelompok atau diskusi santai antar tim.',
       capacity: 25,
       imageUrl: null,
+      depositAmount: '0.00',
       isActive: true,
     }
   ];

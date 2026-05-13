@@ -1,1 +1,102 @@
-const googleCalendarService = require('../../services/googleCalendar.service'); const { success } = require('../../utils/responseHandler'); const AppError = require('../../utils/AppError');  const calendarController = {   getAuthUrl: async (req, res, next) => {     try {       const url = googleCalendarService.getAuthUrl(req.user.id);       return success(res, 'Google Calendar auth URL generated', { url });     } catch (error) {       next(error);     }   },    handleCallback: async (req, res, next) => {     try {       const { code, state } = req.query;       if (!code) {         throw new AppError('Authorization code is required', 400);       }       const userId = state || req.user?.id;       if (!userId) {         throw new AppError('User ID not found in state', 400);       }       await googleCalendarService.handleCallback(code, userId);       res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?calendar=connected`);     } catch (error) {       next(error);     }   },    createEvent: async (req, res, next) => {     try {       const { id } = req.params;       const data = await googleCalendarService.createEvent(id, req.user.id);       return success(res, 'Google Calendar event created', data);     } catch (error) {       next(error);     }   },    deleteEvent: async (req, res, next) => {     try {       const { id } = req.params;       await googleCalendarService.deleteEvent(id);       return success(res, 'Google Calendar event deleted');     } catch (error) {       next(error);     }   },    checkConnection: async (req, res, next) => {     try {       const data = await googleCalendarService.checkConnection(req.user.id);       return success(res, 'Calendar connection status', data);     } catch (error) {       next(error);     }   },    generateLink: async (req, res, next) => {     try {       const { id } = req.params;       const { db } = require('../../config/db');       const { bookings } = require('../../db/schema');       const { eq } = require('drizzle-orm');        const booking = await db.query.bookings.findFirst({         where: eq(bookings.id, id),         with: { facility: true },       });       if (!booking) {         throw new AppError('Booking not found', 404);       }        const summary = `Booking: ${booking.facility.name}`;       const description = `Purpose: ${booking.purpose}`;       const link = googleCalendarService.generateGoogleCalendarLink(         summary,         description,         booking.startTime,         booking.endTime,       );       return success(res, 'Calendar link generated', { link });     } catch (error) {       next(error);     }   }, };  module.exports = calendarController;
+const Joi = require('joi');
+const googleCalendarService = require('../../services/googleCalendar.service');
+const { success } = require('../../utils/responseHandler');
+const AppError = require('../../utils/AppError');
+
+const idParamSchema = Joi.object({
+  id: Joi.string().guid({ version: 'uuidv4' }).required(),
+});
+
+const calendarController = {
+  getAuthUrl: async (req, res, next) => {
+    try {
+      const url = googleCalendarService.getAuthUrl(req.user.id);
+      return success(res, 'Google Calendar auth URL generated', { url });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  handleCallback: async (req, res, next) => {
+    try {
+      const { code, state } = req.query;
+      if (!code) {
+        throw new AppError('Authorization code is required', 400);
+      }
+      const userId = state || req.user?.id;
+      if (!userId) {
+        throw new AppError('User ID not found in state', 400);
+      }
+      await googleCalendarService.handleCallback(code, userId);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?calendar=connected`);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  createEvent: async (req, res, next) => {
+    try {
+      const { error, value } = idParamSchema.validate(req.params);
+      if (error) throw new AppError(error.details[0].message, 400);
+
+      const data = await googleCalendarService.createEvent(value.id, req.user.id);
+      return success(res, 'Google Calendar event created', data);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  deleteEvent: async (req, res, next) => {
+    try {
+      const { error, value } = idParamSchema.validate(req.params);
+      if (error) throw new AppError(error.details[0].message, 400);
+
+      await googleCalendarService.deleteEvent(value.id, req.user.id, req.user.role);
+      return success(res, 'Google Calendar event deleted');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  checkConnection: async (req, res, next) => {
+    try {
+      const data = await googleCalendarService.checkConnection(req.user.id);
+      return success(res, 'Calendar connection status', data);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  generateLink: async (req, res, next) => {
+    try {
+      const { error, value } = idParamSchema.validate(req.params);
+      if (error) throw new AppError(error.details[0].message, 400);
+
+      const { db } = require('../../config/db');
+      const { bookings } = require('../../db/schema');
+      const { eq } = require('drizzle-orm');
+
+      const booking = await db.query.bookings.findFirst({
+        where: eq(bookings.id, value.id),
+        with: { facility: true },
+      });
+      if (!booking) {
+        throw new AppError('Booking not found', 404);
+      }
+
+      const summary = `Booking: ${booking.facility.name}`;
+      const description = `Purpose: ${booking.purpose}`;
+      const link = googleCalendarService.generateGoogleCalendarLink(
+        summary,
+        description,
+        booking.startTime,
+        booking.endTime,
+      );
+      return success(res, 'Calendar link generated', { link });
+    } catch (error) {
+      next(error);
+    }
+  },
+};
+
+module.exports = calendarController;

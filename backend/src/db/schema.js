@@ -1,9 +1,10 @@
-const { mysqlTable, varchar, text, timestamp, boolean, int, mysqlEnum, index, bigint } = require('drizzle-orm/mysql-core');
+const { mysqlTable, varchar, text, timestamp, boolean, int, mysqlEnum, index, bigint, decimal } = require('drizzle-orm/mysql-core');
 const { sql, relations } = require('drizzle-orm');
 
 // Nilai-nilai Enum
 const ROLE = ['USER', 'ADMIN'];
 const STATUS = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'];
+const PAYMENT_STATUS = ['UNPAID', 'PAID', 'REFUNDED'];
 
 const users = mysqlTable('users', {
   id: varchar('id', { length: 36 }).primaryKey().default(sql`(uuid())`),
@@ -11,6 +12,7 @@ const users = mysqlTable('users', {
   email: varchar('email', { length: 255 }).unique().notNull(),
   password: varchar('password', { length: 255 }).notNull(),
   role: mysqlEnum('role', ROLE).default('USER').notNull(),
+  googleRefreshToken: text('google_refresh_token'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').onUpdateNow(),
 }, (table) => ({
@@ -24,6 +26,7 @@ const facilities = mysqlTable('facilities', {
   capacity: int('capacity'),
   isActive: boolean('is_active').default(true).notNull(),
   imageUrl: varchar('image_url', { length: 255 }),
+  depositAmount: decimal('deposit_amount', { precision: 12, scale: 2 }).default('0.00').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').onUpdateNow(),
 }, (table) => ({
@@ -40,6 +43,13 @@ const bookings = mysqlTable('bookings', {
   status: mysqlEnum('status', STATUS).default('PENDING').notNull(),
   notes: text('notes'),
   recurrenceGroupId: varchar('recurrence_group_id', { length: 36 }),
+  // Payment columns
+  paymentStatus: mysqlEnum('payment_status', PAYMENT_STATUS).default('UNPAID').notNull(),
+  depositAmount: decimal('deposit_amount', { precision: 12, scale: 2 }).default('0.00').notNull(),
+  paymentMethod: varchar('payment_method', { length: 50 }),
+  paidAt: timestamp('paid_at'),
+  // Google Calendar integration
+  googleEventId: varchar('google_event_id', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').onUpdateNow(),
 }, (table) => ({
@@ -48,6 +58,21 @@ const bookings = mysqlTable('bookings', {
   statusIdx: index('bookings_status_idx').on(table.status),
   timeIdx: index('bookings_time_idx').on(table.startTime, table.endTime),
   recurrenceIdx: index('bookings_recurrence_idx').on(table.recurrenceGroupId),
+  paymentStatusIdx: index('bookings_payment_status_idx').on(table.paymentStatus),
+}));
+
+const notifications = mysqlTable('notifications', {
+  id: varchar('id', { length: 36 }).primaryKey().default(sql`(uuid())`),
+  userId: varchar('user_id', { length: 36 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // BOOKING_CREATED, etc.
+  bookingId: varchar('booking_id', { length: 36 }),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('notifications_user_idx').on(table.userId),
+  readIdx: index('notifications_read_idx').on(table.isRead),
 }));
 
 const revokedTokens = mysqlTable('revoked_tokens', {
@@ -63,10 +88,22 @@ const revokedTokens = mysqlTable('revoked_tokens', {
 // Relasi-relasi
 const usersRelations = relations(users, ({ many }) => ({
   bookings: many(bookings),
+  notifications: many(notifications),
 }));
 
 const facilitiesRelations = relations(facilities, ({ many }) => ({
   bookings: many(bookings),
+}));
+
+const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  booking: one(bookings, {
+    fields: [notifications.bookingId],
+    references: [bookings.id],
+  }),
 }));
 
 const bookingsRelations = relations(bookings , ({ one }) => ({
@@ -84,8 +121,10 @@ module.exports = {
   users,
   facilities,
   bookings,
+  notifications,
   usersRelations,
   facilitiesRelations,
+  notificationsRelations,
   bookingsRelations,
   revokedTokens,
 };
