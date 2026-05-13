@@ -45,6 +45,7 @@ jobs:
           DB_URL: mysql://root@localhost:3306/drizzle_db
           JWT_SECRET: test_jwt_secret_key_for_ci_pipeline_at_least_32_chars
           NODE_ENV: test
+          AUTH_RATE_LIMIT_MAX: 100
           CORS_ORIGIN: http://localhost:3000
 
   frontend:
