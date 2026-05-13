@@ -67,7 +67,10 @@ export default function RegisterPage() {
           <Card.Content className="py-4 px-0">
             <form className="flex flex-col gap-6" onSubmit={handleRegister}>
               {error && (
-                <div className="bg-danger/10 border border-danger/20 text-danger text-xs p-4 rounded-2xl flex items-center gap-3 font-bold animate-shake">
+                <div
+                  className="bg-danger/10 border border-danger/20 text-danger text-xs p-4 rounded-2xl flex items-center gap-3 font-bold animate-shake"
+                  role="alert"
+                >
                   <Lock size={16} />
                   {error}
                 </div>

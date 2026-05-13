@@ -3,6 +3,7 @@ import type { Facility } from "./types";
 import { useEffect, useState, useRef, useCallback } from "react";
 
 import api from "@/config/api";
+import { extractCollection } from "@/utils/apiData";
 
 export function useFacilities() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -35,9 +36,11 @@ export function useFacilities() {
         const endpoint =
           includeInactive && isAdmin ? "/facilities/admin/all" : "/facilities";
         const response = await api.get(endpoint);
-        const data = response.data.data?.items || response.data.data || [];
+        const data = extractCollection(response.data.data, [
+          "facilities",
+        ]) as Facility[];
 
-        setFacilities(Array.isArray(data) ? data : []);
+        setFacilities(data);
       } catch {
         setFetchError("Gagal memuat data fasilitas. Silakan coba lagi.");
         setFacilities([]);

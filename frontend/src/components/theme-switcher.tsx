@@ -16,6 +16,7 @@ export const ThemeSwitcher = () => {
   return (
     <Button
       isIconOnly
+      aria-label="Toggle theme"
       className="rounded-xl border-default-100"
       variant="ghost"
       onPress={() => setTheme(theme === "light" ? "dark" : "light")}

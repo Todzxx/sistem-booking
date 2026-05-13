@@ -3,6 +3,7 @@ import type { BookingData } from "./types";
 import { useState } from "react";
 
 import api from "@/config/api";
+import { extractCollection } from "@/utils/apiData";
 
 export function useFacilityBookings() {
   const [facilityBookings, setFacilityBookings] = useState<BookingData[]>([]);
@@ -13,9 +14,7 @@ export function useFacilityBookings() {
     try {
       const response = await api.get(`/bookings/facility/${facilityId}`);
 
-      setFacilityBookings(
-        response.data.data?.items || response.data.data || [],
-      );
+      setFacilityBookings(extractCollection(response.data.data));
     } catch {
       setFacilityBookings([]);
     } finally {

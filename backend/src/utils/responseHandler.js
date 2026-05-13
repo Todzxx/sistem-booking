@@ -9,14 +9,18 @@ const success = (res, message, data = null, statusCode = 200) => {
   });
 };
 
-const fail = (res, message, statusCode = 400) => {
+const paginated = (res, message, { items, pagination: { page, limit, total, totalPages, hasMore } }, statusCode = 200) => {
   return res.status(statusCode).json({
-    status: 'fail',
+    status: 'success',
     message,
+    data: {
+      items,
+      pagination: { page, limit, total, totalPages, hasMore },
+    },
   });
 };
 
 module.exports = {
   success,
-  fail,
+  paginated,
 };
