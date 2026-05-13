@@ -1,1 +1,76 @@
-const request = require('supertest'); const app = require('../src/app');  // Mock auth middleware jest.mock('../src/middleware/auth.middleware', () => {   return (req, res, next) => {     req.user = { id: 'test-admin', role: 'ADMIN' };     next();   }; });  // Mock facility service jest.mock('../src/modules/facilities/facility.service', () => ({   getAllFacilities: jest.fn().mockResolvedValue({     items: [{ id: 'f1', name: 'Lab A', isActive: true }],     pagination: { page: 1, limit: 10, total: 1, totalPages: 1, hasMore: false },   }),   getFacilityById: jest.fn().mockImplementation((id) => {     if (id === 'f1') return Promise.resolve({ id: 'f1', name: 'Lab A', isActive: true });     return Promise.reject(new (require('../src/utils/AppError'))('Facility not found', 404));   }),   createFacility: jest.fn().mockResolvedValue({ id: 'f2', name: 'Lab B' }),   updateFacility: jest.fn().mockResolvedValue({ id: 'f1', name: 'Lab A Updated' }),   deleteFacility: jest.fn().mockResolvedValue({ message: 'Success' }),   getAllFacilitiesAdmin: jest.fn().mockResolvedValue({     items: [{ id: 'f1', name: 'Lab A', isActive: true }, { id: 'f3', name: 'Old Lab', isActive: false }],     pagination: { page: 1, limit: 10, total: 2, totalPages: 1, hasMore: false },   }),   reactivateFacility: jest.fn().mockResolvedValue({ id: 'f3', name: 'Old Lab', isActive: true }), }));  describe('Facility Endpoints', () => {   describe('GET /api/v1/facilities', () => {     it('should return paginated list of facilities', async () => {       const res = await request(app).get('/api/v1/facilities');       expect(res.statusCode).toBe(200);       expect(res.body.status).toBe('success');       expect(Array.isArray(res.body.data.items)).toBeTruthy();       expect(res.body.data.pagination).toBeDefined();       expect(res.body.data.pagination.page).toBe(1);     });   });    describe('GET /api/v1/facilities/:id', () => {     it('should return 400 for invalid UUID', async () => {       const res = await request(app).get('/api/v1/facilities/invalid-id');       expect(res.statusCode).toBe(400);     });   });    describe('POST /api/v1/facilities', () => {     it('should validate input', async () => {       const res = await request(app)         .post('/api/v1/facilities')         .send({ name: 'L' });       expect(res.statusCode).toBe(400);     });   });    describe('GET /api/v1/facilities/admin/all', () => {     it('should return all facilities including inactive', async () => {       const res = await request(app).get('/api/v1/facilities/admin/all');       expect(res.statusCode).toBe(200);       expect(res.body.data.items.length).toBe(2);     });   });    describe('PATCH /api/v1/facilities/:id/reactivate', () => {     it('should reactivate a facility', async () => {       const res = await request(app)         .patch('/api/v1/facilities/550e8400-e29b-41d4-a716-446655440000/reactivate');       expect(res.statusCode).toBe(200);       expect(res.body.data.isActive).toBe(true);     });   }); });
+const request = require('supertest');
+const app = require('../src/app');
+
+// Mock auth middleware
+jest.mock('../src/middleware/auth.middleware', () => {
+  return (req, res, next) => {
+    req.user = { id: 'test-admin', role: 'ADMIN' };
+    next();
+  };
+});
+
+// Mock facility service
+jest.mock('../src/modules/facilities/facility.service', () => ({
+  getAllFacilities: jest.fn().mockResolvedValue({
+    items: [{ id: 'f1', name: 'Lab A', isActive: true }],
+    pagination: { page: 1, limit: 10, total: 1, totalPages: 1, hasMore: false },
+  }),
+  getFacilityById: jest.fn().mockImplementation((id) => {
+    if (id === 'f1') return Promise.resolve({ id: 'f1', name: 'Lab A', isActive: true });
+    return Promise.reject(new (require('../src/utils/AppError'))('Facility not found', 404));
+  }),
+  createFacility: jest.fn().mockResolvedValue({ id: 'f2', name: 'Lab B' }),
+  updateFacility: jest.fn().mockResolvedValue({ id: 'f1', name: 'Lab A Updated' }),
+  deleteFacility: jest.fn().mockResolvedValue({ message: 'Success' }),
+  getAllFacilitiesAdmin: jest.fn().mockResolvedValue({
+    items: [{ id: 'f1', name: 'Lab A', isActive: true }, { id: 'f3', name: 'Old Lab', isActive: false }],
+    pagination: { page: 1, limit: 10, total: 2, totalPages: 1, hasMore: false },
+  }),
+  reactivateFacility: jest.fn().mockResolvedValue({ id: 'f3', name: 'Old Lab', isActive: true }),
+}));
+
+describe('Facility Endpoints', () => {
+  describe('GET /api/v1/facilities', () => {
+    it('should return paginated list of facilities', async () => {
+      const res = await request(app).get('/api/v1/facilities');
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(Array.isArray(res.body.data.items)).toBeTruthy();
+      expect(res.body.data.pagination).toBeDefined();
+      expect(res.body.data.pagination.page).toBe(1);
+    });
+  });
+
+  describe('GET /api/v1/facilities/:id', () => {
+    it('should return 400 for invalid UUID', async () => {
+      const res = await request(app).get('/api/v1/facilities/invalid-id');
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /api/v1/facilities', () => {
+    it('should validate input', async () => {
+      const res = await request(app)
+        .post('/api/v1/facilities')
+        .send({ name: 'L' });
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('GET /api/v1/facilities/admin/all', () => {
+    it('should return all facilities including inactive', async () => {
+      const res = await request(app).get('/api/v1/facilities/admin/all');
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.items.length).toBe(2);
+    });
+  });
+
+  describe('PATCH /api/v1/facilities/:id/reactivate', () => {
+    it('should reactivate a facility', async () => {
+      const res = await request(app)
+        .patch('/api/v1/facilities/550e8400-e29b-41d4-a716-446655440000/reactivate');
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.isActive).toBe(true);
+    });
+  });
+});

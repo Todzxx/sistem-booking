@@ -24,7 +24,7 @@ describe('Payment Endpoints', () => {
   describe('POST /api/v1/payments/:id/pay', () => {
     it('should pay deposit successfully', async () => {
       const mockBooking = {
-        id: 'booking-1',
+        id: '550e8400-e29b-41d4-a716-446655440000',
         depositAmount: '50000',
         paymentStatus: 'PAID',
         paymentMethod: 'BANK_TRANSFER',
@@ -34,7 +34,7 @@ describe('Payment Endpoints', () => {
       paymentService.payDeposit.mockResolvedValue(mockBooking);
 
       const res = await request(app)
-        .post('/api/v1/payments/booking-1/pay')
+        .post('/api/v1/payments/550e8400-e29b-41d4-a716-446655440000/pay')
         .send({ paymentMethod: 'BANK_TRANSFER' });
 
       expect(res.statusCode).toBe(200);
@@ -44,7 +44,7 @@ describe('Payment Endpoints', () => {
 
     it('should return 400 for invalid payment method', async () => {
       const res = await request(app)
-        .post('/api/v1/payments/booking-1/pay')
+        .post('/api/v1/payments/550e8400-e29b-41d4-a716-446655440000/pay')
         .send({ paymentMethod: 'INVALID' });
 
       expect(res.statusCode).toBe(400);
@@ -52,7 +52,7 @@ describe('Payment Endpoints', () => {
 
     it('should return 400 for missing payment method', async () => {
       const res = await request(app)
-        .post('/api/v1/payments/booking-1/pay')
+        .post('/api/v1/payments/550e8400-e29b-41d4-a716-446655440000/pay')
         .send({});
 
       expect(res.statusCode).toBe(400);
@@ -63,7 +63,7 @@ describe('Payment Endpoints', () => {
       paymentService.payDeposit.mockRejectedValue(new AppError('Deposit already paid', 400));
 
       const res = await request(app)
-        .post('/api/v1/payments/booking-1/pay')
+        .post('/api/v1/payments/550e8400-e29b-41d4-a716-446655440000/pay')
         .send({ paymentMethod: 'CASH' });
 
       expect(res.statusCode).toBe(400);
@@ -73,7 +73,7 @@ describe('Payment Endpoints', () => {
       paymentService.payDeposit.mockRejectedValue(new AppError('Booking not found', 404));
 
       const res = await request(app)
-        .post('/api/v1/payments/invalid-id/pay')
+        .post('/api/v1/payments/550e8400-e29b-41d4-a716-446655440001/pay')
         .send({ paymentMethod: 'E_WALLET' });
 
       expect(res.statusCode).toBe(404);
@@ -83,7 +83,7 @@ describe('Payment Endpoints', () => {
   describe('POST /api/v1/payments/:id/refund (admin)', () => {
     it('should return 401 for non-admin user', async () => {
       const res = await request(app)
-        .post('/api/v1/payments/booking-1/refund');
+        .post('/api/v1/payments/550e8400-e29b-41d4-a716-446655440000/refund');
 
       expect(res.statusCode).toBe(403);
     });

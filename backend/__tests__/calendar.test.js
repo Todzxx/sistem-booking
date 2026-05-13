@@ -67,7 +67,7 @@ describe('Google Calendar Endpoints', () => {
       });
 
       const res = await request(app)
-        .post('/api/v1/calendar/events/booking-1');
+        .post('/api/v1/calendar/events/550e8400-e29b-41d4-a716-446655440000');
 
       expect(res.statusCode).toBe(200);
       expect(res.body.data.googleEventId).toBe('evt-123');
@@ -77,7 +77,7 @@ describe('Google Calendar Endpoints', () => {
       calendarService.createEvent.mockRejectedValue(new AppError('Google Calendar not connected', 400));
 
       const res = await request(app)
-        .post('/api/v1/calendar/events/booking-1');
+        .post('/api/v1/calendar/events/550e8400-e29b-41d4-a716-446655440000');
 
       expect(res.statusCode).toBe(400);
     });
@@ -86,7 +86,7 @@ describe('Google Calendar Endpoints', () => {
       calendarService.createEvent.mockRejectedValue(new AppError('Only approved bookings can be added to calendar', 400));
 
       const res = await request(app)
-        .post('/api/v1/calendar/events/booking-1');
+        .post('/api/v1/calendar/events/550e8400-e29b-41d4-a716-446655440000');
 
       expect(res.statusCode).toBe(400);
     });
@@ -95,7 +95,7 @@ describe('Google Calendar Endpoints', () => {
   describe('GET /api/v1/calendar/link/:id', () => {
     it('should return 404 for non-existent booking', async () => {
       const res = await request(app)
-        .get('/api/v1/calendar/link/booking-1');
+        .get('/api/v1/calendar/link/550e8400-e29b-41d4-a716-446655440000');
 
       expect(res.statusCode).toBe(404);
     });
@@ -106,7 +106,7 @@ describe('Google Calendar Endpoints', () => {
       calendarService.deleteEvent.mockResolvedValue({});
 
       const res = await request(app)
-        .delete('/api/v1/calendar/events/booking-1');
+        .delete('/api/v1/calendar/events/550e8400-e29b-41d4-a716-446655440000');
 
       expect(res.statusCode).toBe(200);
     });
