@@ -368,11 +368,11 @@ export default function BookingModal({
                     )}
 
                     <div className="space-y-4">
-                      <label className="text-sm font-black text-default-700 ml-1">
+                      <Label className="text-sm font-black text-default-700 ml-1">
                         {isEditMode || isCreateMode
                           ? "Description"
                           : "Event Purpose"}
-                      </label>
+                      </Label>
                       <TextArea
                         aria-label={
                           isEditMode || isCreateMode
@@ -494,12 +494,12 @@ export default function BookingModal({
                         </TextField>
 
                         <div className="flex flex-col gap-2">
-                          <label
+                          <Label
                             className="text-sm font-black text-default-700 ml-1"
                             htmlFor="facility-image"
                           >
                             Facility Image
-                          </label>
+                          </Label>
                           <input
                             accept="image/*"
                             aria-label="Facility image upload"

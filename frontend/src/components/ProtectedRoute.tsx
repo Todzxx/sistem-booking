@@ -15,7 +15,11 @@ export default function ProtectedRoute({
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div
+        aria-label="Loading"
+        className="flex h-screen w-full items-center justify-center"
+        role="status"
+      >
         <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-primary" />
       </div>
     );
