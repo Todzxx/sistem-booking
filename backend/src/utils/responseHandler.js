@@ -20,15 +20,7 @@ const paginated = (res, message, { items, pagination: { page, limit, total, tota
   });
 };
 
-const fail = (res, message, statusCode = 400) => {
-  return res.status(statusCode).json({
-    status: 'fail',
-    message,
-  });
-};
-
 module.exports = {
   success,
   paginated,
-  fail,
 };
