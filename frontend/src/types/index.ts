@@ -1,5 +1,12 @@
+// ============================================================
+// FILE: types/index.ts
+// Tipe data bersama (shared types) untuk frontend
+// User, Facility, Booking, BookingStatus, dll
+// ============================================================
+
 export type Role = "ADMIN" | "USER";
 export type BookingStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
 
 export interface User {
   id: string;
@@ -15,8 +22,6 @@ export interface Facility {
   capacity: number;
   image?: string;
 }
-
-export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
 
 export interface Booking {
   id: string;

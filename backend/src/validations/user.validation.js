@@ -1,3 +1,9 @@
+// ============================================================
+// FILE: validations/user.validation.js
+// Validasi input untuk endpoint user — register, login, profile, admin
+// Menggunakan Joi — mencegah privilege escalation (role tidak bisa dikirim saat register)
+// ============================================================
+
 const Joi = require('joi');
 
 const userValidation = {
@@ -5,7 +11,6 @@ const userValidation = {
     name: Joi.string().min(3).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
-    // role is removed to prevent escalation during registration
   }),
 
   login: Joi.object({

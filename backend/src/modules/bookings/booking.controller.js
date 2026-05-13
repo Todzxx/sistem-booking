@@ -1,28 +1,27 @@
+// ============================================================
+// FILE: modules/bookings/booking.controller.js
+// Controller untuk booking — CRUD + cek ketersediaan + cancel
+// Semua endpoint butuh autentikasi (kecuali internal)
+// ============================================================
+
 const bookingService = require('./booking.service');
 const { success, paginated } = require('../../utils/responseHandler');
 const bookingValidation = require('../../validations/booking.validation');
 const AppError = require('../../utils/AppError');
 
 const bookingController = {
-  // Mengecek apakah suatu fasilitas tersedia pada rentang waktu tertentu
+  // GET /bookings/check?facilityId=&startTime=&endTime=
   checkAvailability: async (req, res, next) => {
     try {
       const { error, value } = bookingValidation.checkAvailability.validate(req.query);
       if (error) throw new AppError(error.details[0].message, 400);
 
-      const isAvailable = await bookingService.checkAvailability(
-        value.facilityId,
-        value.startTime,
-        value.endTime
-      );
-
+      const isAvailable = await bookingService.checkAvailability(value.facilityId, value.startTime, value.endTime);
       return success(res, 'Availability checked', { isAvailable });
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 
-  // Membuat pemesanan baru
+  // POST /bookings — buat booking baru (bisa recurring)
   createBooking: async (req, res, next) => {
     try {
       const { error, value } = bookingValidation.createBooking.validate(req.body);
@@ -30,12 +29,10 @@ const bookingController = {
 
       const booking = await bookingService.createBooking(value, req.user.id);
       return success(res, 'Booking created successfully', booking, 201);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 
-  // Mendapatkan daftar pemesanan milik pengguna yang sedang login
+  // GET /bookings/my — booking milik user yang login (dengan pagination)
   getMyBookings: async (req, res, next) => {
     try {
       const { error, value } = bookingValidation.pagination.validate(req.query);
@@ -44,12 +41,10 @@ const bookingController = {
       const { page, limit } = value;
       const result = await bookingService.getUserBookings(req.user.id, page, limit);
       return paginated(res, 'Bookings retrieved', result);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 
-  // Mendapatkan semua pemesanan di sistem (Hanya untuk Admin)
+  // GET /bookings — (Admin) semua booking di sistem
   getAllBookings: async (req, res, next) => {
     try {
       const { error, value } = bookingValidation.pagination.validate(req.query);
@@ -58,60 +53,46 @@ const bookingController = {
       const { page, limit } = value;
       const result = await bookingService.getAllBookings(page, limit);
       return paginated(res, 'Bookings retrieved', result);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 
-  // Memperbarui status pemesanan (Hanya untuk Admin, misal: APPROVED/REJECTED)
+  // PATCH /bookings/:id/status — (Admin) approve/reject booking
   updateStatus: async (req, res, next) => {
     try {
       const { error: paramError, value: paramValue } = bookingValidation.idParam.validate(req.params);
       if (paramError) throw new AppError(paramError.details[0].message, 400);
 
-      const { id } = paramValue;
       const { error, value } = bookingValidation.updateStatus.validate(req.body);
       if (error) throw new AppError(error.details[0].message, 400);
 
-      const { status, notes } = value;
-      const data = await bookingService.updateStatus(id, status, notes);
-      return success(res, `Booking has been ${status.toLowerCase()}`, data);
-    } catch (error) {
-      next(error);
-    }
+      const data = await bookingService.updateStatus(paramValue.id, value.status, value.notes);
+      return success(res, `Booking has been ${value.status.toLowerCase()}`, data);
+    } catch (error) { next(error); }
   },
 
-  // Membatalkan pemesanan yang masih berstatus PENDING (Hanya oleh pembuatnya)
+  // PATCH /bookings/:id/cancel?cancelAll=true — batalkan booking (hanya pemilik)
   cancelBooking: async (req, res, next) => {
     try {
       const { error: paramError, value: paramValue } = bookingValidation.idParam.validate(req.params);
       if (paramError) throw new AppError(paramError.details[0].message, 400);
 
-      const { id } = paramValue;
-      const { cancelAll } = req.query;
-      const data = await bookingService.cancelBooking(id, req.user.id, cancelAll === 'true');
+      const data = await bookingService.cancelBooking(paramValue.id, req.user.id, req.query.cancelAll === 'true');
       return success(res, 'Booking cancelled successfully', data);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 
-  // Mendapatkan semua pemesanan berdasarkan ID fasilitas
+  // GET /bookings/facility/:facilityId — booking per fasilitas
   getBookingsByFacility: async (req, res, next) => {
     try {
       const { error: paramError, value: paramValue } = bookingValidation.facilityIdParam.validate(req.params);
       if (paramError) throw new AppError(paramError.details[0].message, 400);
 
-      const { facilityId } = paramValue;
       const { error, value } = bookingValidation.pagination.validate(req.query);
       if (error) throw new AppError(error.details[0].message, 400);
 
-      const { page, limit } = value;
-      const result = await bookingService.getBookingsByFacility(facilityId, page, limit);
+      const result = await bookingService.getBookingsByFacility(paramValue.facilityId, value.page, value.limit);
       return paginated(res, 'Facility bookings fetched successfully', result);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 };
 

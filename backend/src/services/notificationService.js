@@ -1,28 +1,33 @@
+// ============================================================
+// FILE: services/notificationService.js
+// Layanan notifikasi real-time via Server-Sent Events (SSE)
+// + penyimpanan notifikasi ke database
+// ============================================================
+
 const { EventEmitter } = require('events');
 const { db } = require('../config/db');
 const { notifications } = require('../db/schema');
 
 const notificationEmitter = new EventEmitter();
+// Map userId → Set<Response> untuk SSE connections
 const userConnections = new Map();
 
 const notificationService = {
+  // Daftarkan koneksi SSE untuk user — otomatis cleanup saat koneksi ditutup
   subscribe: (userId, res) => {
-    if (!userConnections.has(userId)) {
-      userConnections.set(userId, new Set());
-    }
+    if (!userConnections.has(userId)) userConnections.set(userId, new Set());
     userConnections.get(userId).add(res);
 
     res.on('close', () => {
       const connections = userConnections.get(userId);
       if (connections) {
         connections.delete(res);
-        if (connections.size === 0) {
-          userConnections.delete(userId);
-        }
+        if (connections.size === 0) userConnections.delete(userId);
       }
     });
   },
 
+  // Kirim notifikasi real-time ke user via SSE
   sendToUser: (userId, notification) => {
     const connections = userConnections.get(userId);
     if (connections) {
@@ -33,20 +38,19 @@ const notificationService = {
     }
   },
 
+  // Simpan notifikasi ke database
   saveNotification: async (data) => {
     try {
       await db.insert(notifications).values({
-        userId: data.userId,
-        title: data.title,
-        message: data.message,
-        type: data.type,
-        bookingId: data.bookingId,
+        userId: data.userId, title: data.title, message: data.message,
+        type: data.type, bookingId: data.bookingId,
       });
     } catch (error) {
       console.error('Failed to save notification:', error);
     }
   },
 
+  // Event handler untuk booking — buat notifikasi, simpan, kirim real-time
   emitBookingEvent: async (eventType, booking, userId) => {
     const notification = {
       type: eventType,
@@ -78,15 +82,13 @@ const notificationService = {
         break;
     }
 
-    // Persist to DB
+    // Simpan ke DB
     await notificationService.saveNotification({
-      userId,
-      title: notification.title,
-      message: notification.message,
-      type: eventType,
-      bookingId: booking.id,
+      userId, title: notification.title, message: notification.message,
+      type: eventType, bookingId: booking.id,
     });
 
+    // Kirim real-time + emit event
     notificationService.sendToUser(userId, notification);
     notificationEmitter.emit('notification', notification);
   },

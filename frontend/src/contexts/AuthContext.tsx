@@ -1,5 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
+// ============================================================
+// FILE: contexts/AuthContext.tsx
+// Context autentikasi — manage user state, token, login/logout
+// Pada mount, coba refresh token via /auth/refresh
+// Gunakan pendingRefresh singleton untuk cegah double-request StrictMode
+// ============================================================
 
+import { createContext, useContext, useEffect, useState } from "react";
 import api, { setAccessToken } from "@/config/api";
 
 export interface User {
@@ -19,7 +25,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mencegah double HTTP request saat StrictMode double-mount
+// Singleton promise — StrictMode React 19 memanggil effect 2x,
+// shared promise ini mencegah HTTP request duplikat ke /auth/refresh
 let pendingRefresh: Promise<any> | null = null;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -28,12 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false; // flag untuk cleanup jika komponen unmount
 
+    // Coba refresh token session — jika cookie masih valid, server return token baru
     if (!pendingRefresh) {
-      pendingRefresh = api.post("/auth/refresh").finally(() => {
-        pendingRefresh = null;
-      });
+      pendingRefresh = api.post("/auth/refresh").finally(() => { pendingRefresh = null; });
     }
 
     pendingRefresh
@@ -42,8 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.data?.data?.token) {
           setAccessToken(res.data.data.token);
           setToken(res.data.data.token);
-
-          return api.get("/auth/me");
+          return api.get("/auth/me"); // ambil profil user
         }
         throw new Error("No token");
       })
@@ -53,37 +58,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        setToken(null);
-        setUser(null);
-        setAccessToken(null);
+        setToken(null); setUser(null); setAccessToken(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  const login = (
-    newToken: string,
-    _newRefreshToken: string,
-    userData: User,
-  ) => {
-    setAccessToken(newToken);
-    setToken(newToken);
-    setUser(userData);
+  const login = (newToken: string, _newRefreshToken: string, userData: User) => {
+    setAccessToken(newToken); setToken(newToken); setUser(userData);
   };
 
   const logout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch {
-    } finally {
-      setAccessToken(null);
-      setToken(null);
-      setUser(null);
+    try { await api.post("/auth/logout"); } catch { /* ignore */ } finally {
+      setAccessToken(null); setToken(null); setUser(null);
     }
   };
 
@@ -96,10 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-
+  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };

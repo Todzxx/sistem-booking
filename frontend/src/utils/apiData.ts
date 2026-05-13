@@ -1,25 +1,20 @@
-export function extractCollection<T>(
-  payload: unknown,
-  fallbackKeys: string[] = [],
-): T[] {
-  if (Array.isArray(payload)) {
-    return payload as T[];
-  }
+// ============================================================
+// FILE: utils/apiData.ts
+// Helper untuk mengekstrak array dari response API yang beragam format
+// Menangani: array langsung, { items: [...] }, atau properti fallback
+// ============================================================
 
-  if (!payload || typeof payload !== "object") {
-    return [];
-  }
+export function extractCollection<T>(payload: unknown, fallbackKeys: string[] = []): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+
+  if (!payload || typeof payload !== "object") return [];
 
   const record = payload as Record<string, unknown>;
 
-  if (Array.isArray(record.items)) {
-    return record.items as T[];
-  }
+  if (Array.isArray(record.items)) return record.items as T[];
 
   for (const key of fallbackKeys) {
-    if (Array.isArray(record[key])) {
-      return record[key] as T[];
-    }
+    if (Array.isArray(record[key])) return record[key] as T[];
   }
 
   return [];

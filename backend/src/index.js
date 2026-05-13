@@ -1,3 +1,8 @@
+// ============================================================
+// FILE: index.js
+// Entry point — menjalankan server Express di port yang ditentukan
+// ============================================================
+
 const app = require('./app');
 
 const PORT = process.env.PORT || 5000;
