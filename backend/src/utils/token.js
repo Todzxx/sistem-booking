@@ -58,10 +58,8 @@ const verifyRefreshToken = (token) => {
  * Pembantu untuk merotasi atau mencabut (revoke) token
  */
 const revokeTokenByJti = async (jti, exp) => {
-  if (!jti) return;
-  const now = Math.floor(Date.now() / 1000);
-  const ttl = exp && exp > now ? exp - now : 0;
-  await revoke(jti, ttl);
+  if (!jti) return false;
+  return revoke(jti, exp);
 };
 
 module.exports = {

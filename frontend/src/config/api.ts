@@ -12,6 +12,11 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+function resetSession() {
+  setAccessToken(null);
+  window.location.href = "/login";
+}
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -52,9 +57,10 @@ api.interceptors.response.use(
 
           return axios(error.config);
         }
+
+        resetSession();
       } catch {
-        setAccessToken(null);
-        window.location.href = "/login";
+        resetSession();
       }
     }
 

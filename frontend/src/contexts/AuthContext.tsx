@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import api, { setAccessToken } from "@/config/api";
 
@@ -19,15 +19,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Mencegah double HTTP request saat StrictMode double-mount
+let pendingRefresh: Promise<any> | null = null;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .post("/auth/refresh")
+    let cancelled = false;
+
+    if (!pendingRefresh) {
+      pendingRefresh = api.post("/auth/refresh").finally(() => {
+        pendingRefresh = null;
+      });
+    }
+
+    pendingRefresh
       .then((res) => {
+        if (cancelled) return;
         if (res.data?.data?.token) {
           setAccessToken(res.data.data.token);
           setToken(res.data.data.token);
@@ -37,16 +48,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No token");
       })
       .then((res) => {
+        if (cancelled || !res) return;
         setUser(res.data.data);
       })
       .catch(() => {
+        if (cancelled) return;
         setToken(null);
         setUser(null);
         setAccessToken(null);
       })
       .finally(() => {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = (

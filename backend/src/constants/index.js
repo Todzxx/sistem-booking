@@ -13,7 +13,14 @@ const BOOKING_STATUS = {
   CANCELLED: 'CANCELLED',
 };
 
+const PAYMENT_STATUS = {
+  UNPAID: 'UNPAID',
+  PAID: 'PAID',
+  REFUNDED: 'REFUNDED',
+};
+
 module.exports = {
   ROLES,
   BOOKING_STATUS,
+  PAYMENT_STATUS,
 };
