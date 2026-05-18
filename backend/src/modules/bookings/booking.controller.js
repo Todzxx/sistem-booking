@@ -10,16 +10,9 @@ const bookingController = {
       const { error, value } = bookingValidation.checkAvailability.validate(req.query);
       if (error) throw new AppError(error.details[0].message, 400);
 
-      const isAvailable = await bookingService.checkAvailability(
-        value.facilityId,
-        value.startTime,
-        value.endTime
-      );
-
+      const isAvailable = await bookingService.checkAvailability(value.facilityId, value.startTime, value.endTime);
       return success(res, 'Availability checked', { isAvailable });
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   },
 
   // Membuat pemesanan baru

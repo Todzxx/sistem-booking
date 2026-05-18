@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 function sanitizeHtml(value: string | null | undefined): string {
   if (!value) return "";
+
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

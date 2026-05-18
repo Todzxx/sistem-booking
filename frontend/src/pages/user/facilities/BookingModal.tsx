@@ -206,12 +206,11 @@ export default function BookingModal({
         });
         setSuccess("Booking submitted and waiting for admin approval.");
         fetchFacilityBookings(facility!.id);
-        setTimeout(() => {
-          if (!mountedRef.current) return;
-          resetForm();
-          onClose();
-          onSuccess();
-        }, 1500);
+        localStorage.setItem("booking_refresh_ts", Date.now().toString());
+        window.dispatchEvent(new CustomEvent("bookings:refresh"));
+        resetForm();
+        onClose();
+        onSuccess();
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Action failed");
