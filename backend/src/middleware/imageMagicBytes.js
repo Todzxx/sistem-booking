@@ -1,7 +1,14 @@
+// ============================================================
+// FILE: middleware/imageMagicBytes.js
+// Validasi keaslian file gambar dengan membaca magic bytes (signature)
+// Mencegah upload file palsu yang hanya ekstensinya .jpg/.png
+// ============================================================
+
 const fs = require('fs');
 const path = require('path');
 const AppError = require('../utils/AppError');
 
+// Daftar signature byte untuk format gambar yang didukung
 const MAGIC_BYTES = [
   { bytes: [0xFF, 0xD8, 0xFF], name: 'JPEG' },
   { bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], name: 'PNG' },
@@ -12,6 +19,7 @@ const MAGIC_BYTES = [
   { bytes: [0x4D, 0x4D, 0x00, 0x2A], name: 'TIFF-BE' },
 ];
 
+// Cek apakah buffer diawali dengan byte tertentu
 function matchesMagicBytes(buffer, signature) {
   for (let i = 0; i < signature.length; i++) {
     if (buffer[i] !== signature[i]) return false;
@@ -19,6 +27,7 @@ function matchesMagicBytes(buffer, signature) {
   return true;
 }
 
+// WebP punya format RIFF header yang unik
 function isWebP(buffer) {
   if (buffer.length < 12) return false;
   return (
@@ -29,6 +38,7 @@ function isWebP(buffer) {
   );
 }
 
+// Middleware — baca 12 byte pertama file, cocokkan dengan magic bytes
 function validateImageMagicBytes(req, res, next) {
   if (!req.file) return next();
 
@@ -43,6 +53,7 @@ function validateImageMagicBytes(req, res, next) {
 
     const isValid = MAGIC_BYTES.some((sig) => matchesMagicBytes(buffer, sig)) || isWebP(buffer);
 
+    // Jika tidak cocok format gambar manapun, hapus file dan tolak
     if (!isValid) {
       try { fs.unlinkSync(filePath); } catch {}
       return next(new AppError('Invalid image file: the uploaded file is not a valid image', 400));

@@ -1,6 +1,9 @@
-/**
- * Global Constants for the application.
- */
+// ============================================================
+// FILE: constants/index.js
+// Konstanta global — role user, status booking, status pembayaran
+// Dipakai bersama oleh banyak modul agar konsisten
+// ============================================================
+
 const ROLES = {
   ADMIN: 'ADMIN',
   USER: 'USER',

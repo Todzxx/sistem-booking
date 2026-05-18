@@ -1,3 +1,9 @@
+// ============================================================
+// FILE: db/seed.js
+// Seeder fasilitas — mengisi tabel facilities dengan data awal
+// Jalankan: node src/db/seed.js
+// ============================================================
+
 require('dotenv').config();
 const { db } = require('../config/db');
 const { facilities } = require('./schema');
@@ -5,7 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 
 async function seed() {
   console.log('Seeding facilities...');
-  
+
   const data = [
     {
       id: uuidv4(),

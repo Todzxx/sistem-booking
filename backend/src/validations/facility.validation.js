@@ -1,3 +1,9 @@
+// ============================================================
+// FILE: validations/facility.validation.js
+// Validasi input untuk fasilitas — create, update, pagination
+// depositAmount opsional, default 0
+// ============================================================
+
 const Joi = require('joi');
 
 const facilityValidation = {
@@ -20,9 +26,7 @@ const facilityValidation = {
     limit: Joi.number().integer().min(1).max(100).default(10),
   }),
 
-  idParam: Joi.object({
-    id: Joi.string().guid({ version: 'uuidv4' }).required(),
-  }),
+  idParam: Joi.object({ id: Joi.string().guid({ version: 'uuidv4' }).required() }),
 };
 
 module.exports = facilityValidation;

@@ -48,7 +48,6 @@ export default function BookingsPage() {
 
       return false;
     };
-
     fetchBookings();
 
     if (checkAndRefresh()) {
@@ -83,6 +82,7 @@ export default function BookingsPage() {
     };
   }, [fetchBookings]);
 
+  // Cancel booking (optimistic update status ke CANCELLED)
   const handleCancel = async (id: string) => {
     setError("");
     try {
@@ -121,27 +121,17 @@ export default function BookingsPage() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 animate-fade-in">
       <div className="flex items-center gap-3 mb-1">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-          <CalendarRange size={20} />
-        </div>
+        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><CalendarRange size={20} /></div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">
-            My Bookings
-          </h1>
-          <p className="text-default-400 text-sm font-medium">
-            View and manage your room and facility reservations.
-          </p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">My Bookings</h1>
+          <p className="text-default-400 text-sm font-medium">View and manage your room and facility reservations.</p>
         </div>
       </div>
       <div className="mt-2 h-0.5 w-12 rounded-full bg-primary/20 mb-6" />
 
       {error && (
-        <div
-          className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg flex items-center gap-2 text-sm font-bold mb-4"
-          role="alert"
-        >
-          <AlertCircle size={16} />
-          {error}
+        <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg flex items-center gap-2 text-sm font-bold mb-4" role="alert">
+          <AlertCircle size={16} /> {error}
         </div>
       )}
 
