@@ -38,6 +38,7 @@ const { sql } = require('drizzle-orm');
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
+const isTest = process.env.NODE_ENV === 'test';
 
 // === Rate Limiter Global ===
 // Batasi tiap IP maks 100 request per 15 menit, nonaktif di mode development
@@ -45,7 +46,7 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Too many requests from this IP, please try again later',
-  skip: () => !isProduction,
+  skip: () => !isProduction || isTest,
 });
 // === Auth Rate Limiter ===
 // Lebih ketat (5x per window) khusus endpoint login/register
@@ -53,7 +54,7 @@ const authLimiter = rateLimit({
   windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
   max: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 5,
   message: 'Too many authentication attempts, please try again later',
-  skip: () => !isProduction,
+  skip: () => !isProduction || isTest,
 });
 
 // === Middleware Global ===
@@ -76,7 +77,18 @@ app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 app.use(limiter);
 app.use('/api/v1/auth/login', authLimiter);
-app.use('/api/v1/auth/register', authLimiter);
+app.use('/api/v1/auth/register', authLimiter); // Pembatasan lebih ketat untuk login/register
+app.use('/api/v1/auth/refresh', authLimiter);
+
+// === Upload Rate Limiter ===
+// Batasi upload file — 10x per 15 menit per IP
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many upload attempts, please try again later',
+  skip: () => !isProduction || isTest,
+});
+app.use('/api/v1/facilities', uploadLimiter);
 
 // === Rute Dasar ===
 app.get('/', (req, res) => {

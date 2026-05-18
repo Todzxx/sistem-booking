@@ -36,4 +36,5 @@ export interface Booking {
   recurrenceGroupId?: string;
   paymentStatus?: PaymentStatus;
   depositAmount?: string;
+  createdAt?: string;
 }
