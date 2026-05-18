@@ -1,266 +1,25 @@
-import { useEffect, useState, useMemo } from "react";
-import {
-  Card,
-  Chip,
-  Button,
-  Label,
-  Modal,
-  Select,
-  TextArea,
-  TextField,
-  InputGroup,
-  ListBox,
-  useOverlayState,
-} from "@heroui/react";
-import {
-  CheckCircle2,
-  XCircle,
-  User,
-  MapPin,
-  Calendar,
-  AlertCircle,
-  MessageSquare,
-  Search,
-  Filter,
-  Download,
-  Clock,
-  BarChart2,
-  Bell,
-  FileSpreadsheet,
-  FileText,
-} from "lucide-react";
+import type { StatusFilter } from "@/components/admin/AdminFilterBar";
+
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useOverlayState } from "@heroui/react";
 
 import { Booking, BookingStatus } from "@/types";
-import { formatDateTime } from "@/utils/dateUtils";
 import api from "@/config/api";
-import { LOCALE } from "@/config/locale";
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
-
-function sanitizeCsvCell(value: string): string {
-  const v = value ?? "";
-
-  if (/^[=+\-@]/.test(v)) return `\t${v}`;
-
-  return v;
-}
-
-function toCsvValue(value: string): string {
-  return `"${sanitizeCsvCell(value).replace(/"/g, '""')}"`;
-}
-
-// ── Utility: export bookings as CSV ──────────────────────────────────────────
-function exportToCSV(bookings: Booking[]) {
-  const headers = [
-    "ID",
-    "Purpose",
-    "User",
-    "Email",
-    "Facility",
-    "Start Time",
-    "End Time",
-    "Status",
-    "Created At",
-  ];
-  const rows = bookings.map((b: any) => [
-    b.id,
-    toCsvValue(b.purpose ?? ""),
-    toCsvValue(b.user?.name ?? ""),
-    toCsvValue(b.user?.email ?? ""),
-    toCsvValue(b.facility?.name ?? ""),
-    new Date(b.startTime).toLocaleString(LOCALE, {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    new Date(b.endTime).toLocaleString(LOCALE, {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    b.status,
-    new Date(b.createdAt ?? b.startTime).toLocaleString(LOCALE, {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  ]);
-
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = `bookings_export_${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function htd(value: string): string {
-  return escapeHtml(value ?? "");
-}
-
-function exportToExcel(bookings: Booking[]) {
-  const rows = bookings
-    .map(
-      (b: any) => `
-    <tr>
-      <td>${htd(b.id)}</td>
-      <td>${htd(b.purpose)}</td>
-      <td>${htd(b.user?.name)}</td>
-      <td>${htd(b.user?.email)}</td>
-      <td>${htd(b.facility?.name)}</td>
-      <td>${htd(new Date(b.startTime).toLocaleString(LOCALE, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }))}</td>
-      <td>${htd(new Date(b.endTime).toLocaleString(LOCALE, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }))}</td>
-      <td>${htd(b.status)}</td>
-    </tr>
-  `,
-    )
-    .join("");
-  const html = `
-    <html><head><meta charset="utf-8" /></head><body>
-      <table border="1">
-        <thead>
-          <tr><th>ID</th><th>Purpose</th><th>User</th><th>Email</th><th>Facility</th><th>Start Time</th><th>End Time</th><th>Status</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </body></html>
-  `;
-  const blob = new Blob([html], {
-    type: "application/vnd.ms-excel;charset=utf-8;",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = `bookings_export_${new Date().toISOString().slice(0, 10)}.xls`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportToPDF(bookings: Booking[]) {
-  const rows = bookings
-    .map(
-      (b: any) => `
-    <tr>
-      <td>${htd(b.purpose)}</td>
-      <td>${htd(b.user?.name)}</td>
-      <td>${htd(b.facility?.name)}</td>
-      <td>${htd(new Date(b.startTime).toLocaleString(LOCALE, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }))}</td>
-      <td>${htd(new Date(b.endTime).toLocaleString(LOCALE, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }))}</td>
-      <td>${htd(b.status)}</td>
-    </tr>
-  `,
-    )
-    .join("");
-  const printWindow = window.open("", "_blank", "width=1100,height=800");
-
-  if (!printWindow) return;
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>Booking Audit Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
-          h1 { font-size: 22px; margin: 0 0 4px; }
-          p { color: #6b7280; margin: 0 0 20px; }
-          table { border-collapse: collapse; width: 100%; font-size: 12px; }
-          th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
-          th { background: #f3f4f6; }
-        </style>
-      </head>
-      <body>
-        <h1>Booking Audit Report</h1>
-        <p>Generated ${new Date().toLocaleString(LOCALE, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-        <table>
-          <thead><tr><th>Purpose</th><th>User</th><th>Facility</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-}
-
-// ── Mini bar chart (pure SVG, no library needed) ─────────────────────────────
-function MiniBarChart({
-  data,
-}: {
-  data: { label: string; value: number; color: string }[];
-}) {
-  const max = Math.max(...data.map((d) => d.value), 1);
-  const W = 280;
-  const H = 80;
-  const barW = Math.floor((W - (data.length - 1) * 8) / data.length);
-
-  return (
-    <svg className="overflow-visible" height={H} width={W}>
-      {data.map((d, i) => {
-        const barH = Math.max(4, (d.value / max) * (H - 20));
-        const x = i * (barW + 8);
-        const y = H - 20 - barH;
-
-        return (
-          <g key={d.label}>
-            <rect
-              fill={d.color}
-              height={barH}
-              opacity={0.85}
-              rx={4}
-              width={barW}
-              x={x}
-              y={y}
-            />
-            <text
-              className="text-default-400"
-              fill="currentColor"
-              fontSize={8}
-              textAnchor="middle"
-              x={x + barW / 2}
-              y={H - 4}
-            >
-              {d.value}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-const STATUS_FILTERS = [
-  "ALL",
-  "PENDING",
-  "APPROVED",
-  "REJECTED",
-  "CANCELLED",
-] as const;
-
-type StatusFilter = (typeof STATUS_FILTERS)[number];
+import {
+  AdminHeader,
+  AdminNotifications,
+  AdminStats,
+  FacilityUsageChart,
+  AdminFilterBar,
+  AdminBookingList,
+  AdminNoteModal,
+} from "@/components/admin";
 
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [facilityFilter, setFacilityFilter] = useState("ALL");
@@ -269,8 +28,6 @@ export default function AdminDashboard() {
     { id: number; type: "error" | "validation"; message: string }[]
   >([]);
 
-  // Note Modal
-  const noteModalState = useOverlayState();
   const [notes, setNotes] = useState("");
   const [modalError, setModalError] = useState("");
   const [pendingAction, setPendingAction] = useState<{
@@ -278,7 +35,18 @@ export default function AdminDashboard() {
     status: BookingStatus;
   } | null>(null);
 
-  const fetchAllBookings = async () => {
+  const noteModal = useOverlayState();
+
+  const pushAdminNotification = useCallback(
+    (type: "error" | "validation", message: string) => {
+      setNotifications((current) =>
+        [{ id: Date.now(), type, message }, ...current].slice(0, 5),
+      );
+    },
+    [],
+  );
+
+  const fetchAllBookings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get("/bookings?limit=100");
@@ -292,80 +60,70 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const pushAdminNotification = (
-    type: "error" | "validation",
-    message: string,
-  ) => {
-    setNotifications((current) =>
-      [{ id: Date.now(), type, message }, ...current].slice(0, 5),
-    );
-  };
+  }, [pushAdminNotification]);
 
   useEffect(() => {
     fetchAllBookings();
-  }, []);
+  }, [fetchAllBookings]);
 
-  const handleUpdateStatus = async (
-    id: string,
-    status: BookingStatus,
-    adminNote?: string,
-  ) => {
-    if (status === "REJECTED" && adminNote !== undefined && !adminNote.trim()) {
-      setModalError("Admin note is required when rejecting a booking.");
+  const handleUpdateStatusInit = useCallback(
+    (id: string, status: BookingStatus, adminNote?: string) => {
+      if (
+        status === "REJECTED" &&
+        adminNote !== undefined &&
+        !adminNote.trim()
+      ) {
+        setModalError("Admin note is required when rejecting a booking.");
 
-      return;
-    }
+        return;
+      }
 
-    if (adminNote === undefined) {
-      setPendingAction({ id, status });
-      setNotes("");
-      setModalError("");
-      noteModalState.open();
+      if (adminNote === undefined) {
+        setPendingAction({ id, status });
+        setNotes("");
+        setModalError("");
+        noteModal.open();
 
-      return;
-    }
+        return;
+      }
 
-    setActionLoading(id);
-    try {
-      await api.patch(`/bookings/${id}/status`, { status, notes: adminNote });
-      await fetchAllBookings();
-      noteModalState.close();
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Error updating status", err);
-      const message =
-        (err as any)?.response?.data?.message ||
-        "Failed to update booking status.";
+      setActionLoading(id);
+      api
+        .patch(`/bookings/${id}/status`, { status, notes: adminNote })
+        .then(() => fetchAllBookings())
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error("Error updating status", err);
+          const message =
+            (err as any)?.response?.data?.message ||
+            "Failed to update booking status.";
 
-      pushAdminNotification("error", message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
+          pushAdminNotification("error", message);
+        })
+        .finally(() => setActionLoading(null));
+    },
+    [fetchAllBookings, pushAdminNotification, noteModal],
+  );
 
-  const getStatusColor = (status: BookingStatus) => {
-    switch (status) {
-      case "PENDING":
-        return "warning";
-      case "APPROVED":
-        return "success";
-      case "REJECTED":
-        return "danger";
-      default:
-        return "default";
-    }
-  };
+  const handleModalConfirm = useCallback(
+    (id: string, status: BookingStatus, note: string) => {
+      if (status === "REJECTED" && !note.trim()) {
+        setModalError("Admin note is required when rejecting a booking.");
 
-  // ── Computed analytics ────────────────────────────────────────────────────
+        return;
+      }
+      handleUpdateStatusInit(id, status, note);
+      noteModal.close();
+    },
+    [handleUpdateStatusInit, noteModal],
+  );
+
   const stats = useMemo(() => {
     const total = bookings.length;
     const pending = bookings.filter((b) => b.status === "PENDING").length;
     const approved = bookings.filter((b) => b.status === "APPROVED").length;
     const rejected = bookings.filter((b) => b.status === "REJECTED").length;
 
-    // Bookings per facility
     const facilityMap: Record<string, number> = {};
 
     bookings.forEach((b: any) => {
@@ -401,15 +159,6 @@ export default function AdminDashboard() {
     };
   }, [bookings]);
 
-  const chartColors = [
-    "var(--heroui-primary)",
-    "var(--heroui-success)",
-    "var(--heroui-warning)",
-    "var(--heroui-danger)",
-    "var(--heroui-secondary)",
-  ];
-
-  // ── Filtered bookings ─────────────────────────────────────────────────────
   const filteredBookings = useMemo(() => {
     const q = search.toLowerCase();
 
@@ -430,575 +179,97 @@ export default function AdminDashboard() {
     });
   }, [bookings, search, statusFilter, facilityFilter, dateFilter]);
 
-  const facilityOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(bookings.map((b: any) => b.facility?.name).filter(Boolean)),
-      ).sort(),
-    [bookings],
+  const chartColors = [
+    "var(--heroui-primary)",
+    "var(--heroui-success)",
+    "var(--heroui-warning)",
+    "var(--heroui-danger)",
+    "var(--heroui-secondary)",
+  ];
+
+  const hasFilters = !!(
+    search ||
+    statusFilter !== "ALL" ||
+    facilityFilter !== "ALL" ||
+    dateFilter
   );
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setFacilityFilter("ALL");
+    setDateFilter("");
+  };
+
+  const dismissNotification = (id: number) => {
+    setNotifications((current) =>
+      current.filter((notification) => notification.id !== id),
+    );
+  };
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">
-            Admin Panel
-          </h1>
-          <p className="text-muted font-medium text-lg">
-            Manage reservations and monitor facility usage.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            className="h-11 px-4 rounded-2xl font-black text-xs border-default-200 gap-2 shrink-0"
-            variant="ghost"
-            onPress={() => exportToCSV(filteredBookings)}
-          >
-            <Download size={16} />
-            CSV
-          </Button>
-          <Button
-            className="h-11 px-4 rounded-2xl font-black text-xs border-default-200 gap-2 shrink-0"
-            variant="ghost"
-            onPress={() => exportToExcel(filteredBookings)}
-          >
-            <FileSpreadsheet size={16} />
-            Excel
-          </Button>
-          <Button
-            className="h-11 px-4 rounded-2xl font-black text-xs border-default-200 gap-2 shrink-0"
-            variant="ghost"
-            onPress={() => exportToPDF(filteredBookings)}
-          >
-            <FileText size={16} />
-            PDF
-          </Button>
-        </div>
-      </div>
+      <AdminHeader filteredBookings={filteredBookings} />
 
-      {notifications.length > 0 && (
-        <Card className="p-4 rounded-2xl border border-default-200 bg-background/80">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
-              <Bell size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black text-default-400 uppercase tracking-widest mb-2">
-                Validation & Error Center
-              </p>
-              <div className="flex flex-col gap-2">
-                {notifications.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-bold ${
-                      item.type === "error"
-                        ? "border-danger/20 bg-danger/10 text-danger"
-                        : "border-warning/20 bg-warning/10 text-warning"
-                    }`}
-                  >
-                    <span className="min-w-0 break-words">
-                      {item.type === "validation" ? "Validation: " : "Error: "}
-                      {item.message}
-                    </span>
-                    <Button
-                      className="text-[10px] uppercase tracking-widest opacity-70 hover:opacity-100 min-w-0 h-auto p-0 bg-transparent"
-                      variant="ghost"
-                      onPress={() =>
-                        setNotifications((current) =>
-                          current.filter(
-                            (notification) => notification.id !== item.id,
-                          ),
-                        )
-                      }
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      <AdminNotifications
+        notifications={notifications}
+        onDismiss={dismissNotification}
+      />
 
-      {/* Analytics strip */}
       {!loading && bookings.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total */}
-          <Card className="p-5 rounded-xl border border-default-200 bg-background/60">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-primary/10 rounded-2xl text-primary">
-                <BarChart2 size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-default-400 uppercase tracking-widest">
-                  Total
-                </p>
-                <p className="text-2xl font-black text-foreground">
-                  {stats.total}
-                </p>
-              </div>
-            </div>
-          </Card>
-          {/* Pending */}
-          <Card className="p-5 rounded-xl border border-warning/20 bg-warning/5">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-warning/10 rounded-2xl text-warning">
-                <Clock size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-default-400 uppercase tracking-widest">
-                  Pending
-                </p>
-                <p className="text-2xl font-black text-warning">
-                  {stats.pending}
-                </p>
-              </div>
-            </div>
-          </Card>
-          {/* Approved */}
-          <Card className="p-5 rounded-xl border border-success/20 bg-success/5">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-success/10 rounded-2xl text-success">
-                <CheckCircle2 size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-default-400 uppercase tracking-widest">
-                  Approved
-                </p>
-                <p className="text-2xl font-black text-success">
-                  {stats.approved}
-                </p>
-              </div>
-            </div>
-          </Card>
-          {/* Approval Rate */}
-          <Card className="p-5 rounded-xl border border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-primary/10 rounded-2xl text-primary">
-                <Filter size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-default-400 uppercase tracking-widest">
-                  Approval Rate
-                </p>
-                <p className="text-2xl font-black text-primary">
-                  {stats.approvalRate}%
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
+        <AdminStats
+          approvalRate={stats.approvalRate}
+          approved={stats.approved}
+          pending={stats.pending}
+          total={stats.total}
+        />
       )}
 
-      {/* Facility usage bar chart */}
       {!loading && stats.facilityStats.length > 0 && (
-        <Card className="p-6 rounded-xl border border-default-200 bg-background/60">
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-default-400 uppercase tracking-widest mb-4">
-                Bookings per Facility
-              </p>
-              <div className="flex flex-col gap-2.5">
-                {stats.facilityStats.map(([name, count], idx) => (
-                  <div key={name} className="flex items-center gap-3">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ background: chartColors[idx] }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-default-600 truncate">
-                          {name}
-                        </span>
-                        <span className="text-xs font-black text-default-500 shrink-0 ml-2">
-                          {count}
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-default-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${(count / stats.total) * 100}%`,
-                            background: chartColors[idx],
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="shrink-0 flex flex-col items-center justify-center gap-2 pl-4 border-l border-default-100">
-              <p className="text-[10px] font-black text-default-400 uppercase tracking-widest">
-                Distribution
-              </p>
-              <MiniBarChart
-                data={stats.facilityStats.map(([label, value], idx) => ({
-                  label,
-                  value,
-                  color: chartColors[idx],
-                }))}
-              />
-            </div>
-          </div>
-          {stats.peakHours.length > 0 && (
-            <div className="mt-5 pt-5 border-t border-default-100">
-              <p className="text-[10px] font-black text-default-400 uppercase tracking-widest mb-3">
-                Peak Hours
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {stats.peakHours.map(([hour, count]) => (
-                  <Chip
-                    key={hour}
-                    className="font-black"
-                    color="accent"
-                    size="sm"
-                    variant="soft"
-                  >
-                    {hour} ({count})
-                  </Chip>
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
+        <FacilityUsageChart
+          chartColors={chartColors}
+          facilityStats={stats.facilityStats}
+          peakHours={stats.peakHours}
+          total={stats.total}
+        />
       )}
 
-      {/* Search & Filter bar */}
       {!loading && bookings.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <InputGroup className="rounded-2xl border-default-200 flex-1">
-            <InputGroup.Prefix className="pl-3">
-              <Search className="text-default-400" size={16} />
-            </InputGroup.Prefix>
-            <InputGroup.Input
-              placeholder="Search by purpose, user, room..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </InputGroup>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <Label className="sr-only">Room</Label>
-              <Select
-                aria-label="Filter by room"
-                className="rounded-xl"
-                selectedKey={facilityFilter}
-                onSelectionChange={(key) => setFacilityFilter(key as string)}
-              >
-                <Select.Trigger className="h-11 rounded-xl px-4">
-                  <Select.Value />
-                </Select.Trigger>
-                <Select.Popover>
-                  <ListBox>
-                    <ListBox.Item id="ALL" textValue="All rooms">
-                      All rooms
-                    </ListBox.Item>
-                    {facilityOptions.map((name) => (
-                      <ListBox.Item key={name} id={name} textValue={name}>
-                        {name}
-                      </ListBox.Item>
-                    ))}
-                  </ListBox>
-                </Select.Popover>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label className="sr-only">Date</Label>
-              <TextField
-                aria-label="Filter by date"
-                type="date"
-                value={dateFilter}
-                onChange={(value) => setDateFilter(value)}
-              />
-            </div>
-          </div>
-          <div
-            aria-label="Filter by status"
-            className="flex gap-2 flex-wrap"
-            role="tablist"
-          >
-            {STATUS_FILTERS.map((s) => {
-              const isActive = statusFilter === s;
-              const activeClass =
-                s === "ALL"
-                  ? "bg-primary text-white border-primary"
-                  : s === "PENDING"
-                    ? "bg-warning text-white border-warning"
-                    : s === "APPROVED"
-                      ? "bg-success text-white border-success"
-                      : "bg-danger text-white border-danger";
-
-              return (
-                <Button
-                  key={s}
-                  aria-selected={isActive}
-                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border-2 ${
-                    isActive
-                      ? activeClass
-                      : "bg-background border-default-200 text-default-500"
-                  }`}
-                  variant="ghost"
-                  onPress={() => setStatusFilter(s)}
-                >
-                  {s}
-                  {s !== "ALL" && (
-                    <span className="ml-1.5 opacity-70">
-                      ({bookings.filter((b) => b.status === s).length})
-                    </span>
-                  )}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
+        <AdminFilterBar
+          bookings={bookings}
+          dateFilter={dateFilter}
+          facilityFilter={facilityFilter}
+          search={search}
+          statusFilter={statusFilter}
+          onDateFilterChange={setDateFilter}
+          onFacilityFilterChange={setFacilityFilter}
+          onSearchChange={setSearch}
+          onStatusFilterChange={setStatusFilter}
+        />
       )}
 
-      {/* Booking list */}
-      {loading ? (
-        <div className="flex flex-col gap-4">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-40 bg-default-100 rounded-xl animate-pulse"
-            />
-          ))}
-        </div>
-      ) : filteredBookings.length === 0 ? (
-        <Card className="p-8 text-center bg-default-50/50 border-2 border-dashed border-default-200 rounded-xl">
-          <AlertCircle className="mx-auto text-default-300 mb-4" size={48} />
-          <p className="text-xl font-black text-default-400">
-            {search ||
-            statusFilter !== "ALL" ||
-            facilityFilter !== "ALL" ||
-            dateFilter
-              ? "No bookings match your filter."
-              : "No booking requests found."}
-          </p>
-          {(search ||
-            statusFilter !== "ALL" ||
-            facilityFilter !== "ALL" ||
-            dateFilter) && (
-            <Button
-              className="mt-4 text-sm font-bold text-primary underline bg-transparent"
-              variant="ghost"
-              onPress={() => {
-                setSearch("");
-                setStatusFilter("ALL");
-                setFacilityFilter("ALL");
-                setDateFilter("");
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <p className="text-xs font-bold text-default-400">
-            Showing {filteredBookings.length} of {bookings.length} bookings
-          </p>
-          {filteredBookings.map((booking: any) => (
-            <Card
-              key={booking.id}
-              className="p-6 border border-default-200 rounded-xl bg-background/60 backdrop-blur-md hover:shadow-lg transition-shadow duration-300"
-            >
-              <div className="flex flex-col lg:flex-row justify-between gap-6">
-                <div className="flex-1 flex flex-col gap-3 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <Chip
-                      className="font-black"
-                      color={getStatusColor(booking.status)}
-                      size="sm"
-                      variant="soft"
-                    >
-                      {booking.status}
-                    </Chip>
-                    <span className="text-xs font-bold text-default-400 tracking-widest uppercase">
-                      #{booking.id.substring(0, 8)}
-                    </span>
-                  </div>
+      <AdminBookingList
+        actionLoading={actionLoading}
+        bookings={bookings}
+        filteredBookings={filteredBookings}
+        hasFilters={hasFilters}
+        loading={loading}
+        onClearFilters={clearFilters}
+        onUpdateStatus={handleUpdateStatusInit}
+      />
 
-                  <h3 className="text-xl font-black text-foreground truncate">
-                    {booking.purpose}
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2 text-default-600 min-w-0">
-                      <User className="text-primary shrink-0" size={15} />
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-black uppercase text-default-400">
-                          Reserved By
-                        </p>
-                        <p className="text-xs font-bold truncate">
-                          {booking.user?.name}
-                        </p>
-                        <p className="text-[10px] text-default-400 truncate">
-                          {booking.user?.email}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-default-600 min-w-0">
-                      <MapPin className="text-primary shrink-0" size={15} />
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-black uppercase text-default-400">
-                          Facility
-                        </p>
-                        <p className="text-xs font-bold truncate">
-                          {booking.facility?.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-default-600 min-w-0">
-                      <Calendar className="text-primary shrink-0" size={15} />
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-black uppercase text-default-400">
-                          Time Window
-                        </p>
-                        <p className="text-xs font-bold">
-                          {formatDateTime(booking.startTime)}
-                        </p>
-                        <p className="text-[10px] text-default-400">
-                          →{" "}
-                          {new Date(booking.endTime).toLocaleTimeString(
-                            LOCALE,
-                            { hour: "2-digit", minute: "2-digit" },
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  {booking.status === "PENDING" && (
-                    <>
-                      <Button
-                        className="h-11 px-5 rounded-2xl font-black text-xs shadow-lg shadow-success/20"
-                        isPending={actionLoading === booking.id}
-                        variant="primary"
-                        onPress={() =>
-                          handleUpdateStatus(booking.id, "APPROVED")
-                        }
-                      >
-                        <CheckCircle2 className="mr-1.5" size={16} />
-                        Approve
-                      </Button>
-                      <Button
-                        className="h-11 px-5 rounded-2xl font-black text-xs shadow-lg shadow-danger/20"
-                        isPending={actionLoading === booking.id}
-                        variant="danger-soft"
-                        onPress={() =>
-                          handleUpdateStatus(booking.id, "REJECTED")
-                        }
-                      >
-                        <XCircle className="mr-1.5" size={16} />
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                  {booking.status !== "PENDING" && (
-                    <div className="text-default-300 font-bold italic text-sm px-4">
-                      Processed
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Admin Note Modal */}
-      <Modal state={noteModalState}>
-        <Modal.Trigger>
-          <button aria-hidden className="sr-only" tabIndex={-1} />
-        </Modal.Trigger>
-        <Modal.Backdrop variant="blur">
-          <Modal.Container scroll="inside">
-            <Modal.Dialog className="max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-default-200 bg-surface/90 backdrop-blur-xl p-2">
-              {({ close }) => (
-                <div className="p-6 flex flex-col flex-1 min-h-0 overflow-y-auto">
-                  <Modal.Header className="flex flex-col gap-1 items-center text-center px-4 pt-4">
-                    <div
-                      className={`w-16 h-16 rounded-xl flex items-center justify-center mb-4 ${
-                        pendingAction?.status === "APPROVED"
-                          ? "bg-success/10 text-success"
-                          : "bg-danger/10 text-danger"
-                      }`}
-                    >
-                      <MessageSquare size={32} />
-                    </div>
-                    <Modal.Heading className="text-3xl font-black tracking-tight">
-                      Add a Note
-                    </Modal.Heading>
-                    <p className="text-muted font-medium">
-                      Provide a reason for this{" "}
-                      {pendingAction?.status?.toLowerCase()} action.
-                    </p>
-                  </Modal.Header>
-                  <Modal.Body className="py-8">
-                    <div className="flex flex-col gap-4">
-                      {modalError && (
-                        <div className="bg-danger/10 text-danger text-sm p-4 rounded-2xl border border-danger/20 font-bold">
-                          {modalError}
-                        </div>
-                      )}
-                      <div className="flex flex-col gap-2">
-                        <Label className="text-sm font-black text-default-700 ml-1">
-                          {pendingAction?.status === "REJECTED"
-                            ? "Admin Note (Required)"
-                            : "Admin Note (Optional)"}
-                        </Label>
-                        <TextArea
-                          aria-label="Admin note"
-                          className="rounded-2xl"
-                          placeholder="Write your message here..."
-                          value={notes}
-                          onChange={(e) => {
-                            setNotes(e.target.value);
-                            setModalError("");
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </Modal.Body>
-                  <Modal.Footer className="px-0 pb-2 gap-3 flex flex-col sm:flex-row">
-                    <Button
-                      className="flex-1 h-14 rounded-2xl font-bold border-default-200"
-                      variant="ghost"
-                      onPress={close}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="flex-1 h-14 rounded-2xl font-bold shadow-xl shadow-primary/30"
-                      isPending={!!actionLoading}
-                      variant={
-                        pendingAction?.status === "APPROVED"
-                          ? "primary"
-                          : "danger"
-                      }
-                      onPress={() =>
-                        handleUpdateStatus(
-                          pendingAction!.id,
-                          pendingAction!.status,
-                          notes,
-                        )
-                      }
-                    >
-                      Confirm {pendingAction?.status}
-                    </Button>
-                  </Modal.Footer>
-                </div>
-              )}
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      <AdminNoteModal
+        actionLoading={!!actionLoading}
+        modalError={modalError}
+        modalState={noteModal}
+        notes={notes}
+        pendingAction={pendingAction}
+        onConfirm={handleModalConfirm}
+        onNotesChange={(value) => {
+          setNotes(value);
+          setModalError("");
+        }}
+      />
     </div>
   );
 }
