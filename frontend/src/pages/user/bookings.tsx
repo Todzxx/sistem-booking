@@ -1,7 +1,8 @@
 import type { Booking } from "@/types";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarRange, AlertCircle } from "lucide-react";
+import { Button, Modal, useOverlayState } from "@heroui/react";
+import { CalendarRange, AlertCircle, AlertTriangle } from "lucide-react";
 
 import api from "@/config/api";
 import {
@@ -21,6 +22,8 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const cancelModal = useOverlayState();
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -48,6 +51,7 @@ export default function BookingsPage() {
 
       return false;
     };
+
     fetchBookings();
 
     if (checkAndRefresh()) {
@@ -82,21 +86,29 @@ export default function BookingsPage() {
     };
   }, [fetchBookings]);
 
-  // Cancel booking (optimistic update status ke CANCELLED)
+  // Open confirmation modal before cancel
   const handleCancel = async (id: string) => {
+    setCancellingId(id);
+    cancelModal.open();
+  };
+
+  const confirmCancel = async () => {
+    if (!cancellingId) return;
     setError("");
+    cancelModal.close();
     try {
-      await api.patch(`/bookings/${id}/cancel`);
+      await api.patch(`/bookings/${cancellingId}/cancel`);
       setBookings((prev) =>
         prev
           .map((b) =>
-            b.id === id ? { ...b, status: "CANCELLED" as const } : b,
+            b.id === cancellingId ? { ...b, status: "CANCELLED" as const } : b,
           )
           .sort(sortByCreatedAt),
       );
     } catch {
       setError("Failed to cancel booking. Please try again.");
     }
+    setCancellingId(null);
   };
 
   const handlePayDeposit = async (id: string) => {
@@ -121,16 +133,25 @@ export default function BookingsPage() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 animate-fade-in">
       <div className="flex items-center gap-3 mb-1">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><CalendarRange size={20} /></div>
+        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <CalendarRange size={20} />
+        </div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">My Bookings</h1>
-          <p className="text-default-400 text-sm font-medium">View and manage your room and facility reservations.</p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">
+            My Bookings
+          </h1>
+          <p className="text-default-400 text-sm font-medium">
+            View and manage your room and facility reservations.
+          </p>
         </div>
       </div>
       <div className="mt-2 h-0.5 w-12 rounded-full bg-primary/20 mb-6" />
 
       {error && (
-        <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg flex items-center gap-2 text-sm font-bold mb-4" role="alert">
+        <div
+          className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg flex items-center gap-2 text-sm font-bold mb-4"
+          role="alert"
+        >
           <AlertCircle size={16} /> {error}
         </div>
       )}
@@ -144,6 +165,51 @@ export default function BookingsPage() {
           onPayDeposit={handlePayDeposit}
         />
       )}
+
+      <Modal state={cancelModal}>
+        <Modal.Trigger>
+          <button aria-hidden className="sr-only" tabIndex={-1} />
+        </Modal.Trigger>
+        <Modal.Backdrop variant="blur">
+          <Modal.Container>
+            <Modal.Dialog className="max-w-sm w-full rounded-xl border border-default-200 bg-surface/90 backdrop-blur-xl p-2">
+              {({ close }) => (
+                <div className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-xl bg-danger/10 text-danger flex items-center justify-center mx-auto mb-4">
+                    <AlertTriangle size={28} />
+                  </div>
+                  <Modal.Heading className="text-xl font-black tracking-tight mb-2">
+                    Cancel Booking?
+                  </Modal.Heading>
+                  <p className="text-default-500 text-sm font-medium mb-6">
+                    This action cannot be undone. The booking slot will be
+                    released.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1 h-11 rounded-lg font-bold border-default-200"
+                      variant="ghost"
+                      onPress={() => {
+                        close();
+                        setCancellingId(null);
+                      }}
+                    >
+                      Keep Booking
+                    </Button>
+                    <Button
+                      className="flex-1 h-11 rounded-lg font-bold"
+                      variant="danger"
+                      onPress={confirmCancel}
+                    >
+                      Yes, Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </div>
   );
 }

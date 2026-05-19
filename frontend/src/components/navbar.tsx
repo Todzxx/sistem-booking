@@ -10,6 +10,7 @@ import { Button } from "@heroui/react";
 import { Menu, X, LogOut, Bell } from "lucide-react";
 
 import { ThemeSwitcher } from "./theme-switcher";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -25,15 +26,34 @@ export const Navbar = () => {
     return (
       <nav className="sticky top-0 z-50 w-full border-b border-default-100 bg-background/80 backdrop-blur-md">
         <header className="mx-auto flex h-20 max-w-[1280px] items-center justify-between gap-4 px-6 py-4">
-          <Link className="flex items-center gap-2" to="/" onClick={() => setIsMenuOpen(false)}>
+          <Link
+            className="flex items-center gap-2"
+            to="/"
+            onClick={() => setIsMenuOpen(false)}
+          >
             <div className="p-2 bg-accent text-accent-foreground rounded-xl shadow-lg shadow-accent/20 flex items-center justify-center">
-              <svg fill="currentColor" height="18" viewBox="0 0 24 24" width="18"><path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" /></svg>
+              <svg
+                fill="currentColor"
+                height="18"
+                viewBox="0 0 24 24"
+                width="18"
+              >
+                <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" />
+              </svg>
             </div>
-            <p className="font-black text-lg tracking-tighter text-default-900 dark:text-white">ROOMSYNC</p>
+            <p className="font-black text-lg tracking-tighter text-default-900 dark:text-white">
+              ROOMSYNC
+            </p>
           </Link>
           <div className="flex items-center gap-3">
             <ThemeSwitcher />
-            <Button className="font-black rounded-xl h-10 px-6 shadow-lg shadow-primary/20" variant="primary" onPress={() => navigate("/login")}>Login</Button>
+            <Button
+              className="font-black rounded-xl h-10 px-6 shadow-lg shadow-primary/20"
+              variant="primary"
+              onPress={() => navigate("/login")}
+            >
+              Login
+            </Button>
           </div>
         </header>
       </nav>
@@ -42,37 +62,67 @@ export const Navbar = () => {
 
   // Menu items berbeda untuk ADMIN vs USER
   const userMenuItems = [
-    { label: "Dashboard", path: "/" }, { label: "Facilities", path: "/facilities" }, { label: "Schedule", path: "/calendar" },
-    { label: "My Bookings", path: "/bookings" }, { label: "Notifications", path: "/notifications" },
-    { label: "Help/Support", path: "/help" }, { label: "Profile", path: "/profile" },
+    { label: "Dashboard", path: "/" },
+    { label: "Facilities", path: "/facilities" },
+    { label: "Schedule", path: "/calendar" },
+    { label: "My Bookings", path: "/bookings" },
+    { label: "Notifications", path: "/notifications" },
+    { label: "Help/Support", path: "/help" },
+    { label: "Profile", path: "/profile" },
   ];
   const adminMenuItems = [
-    { label: "Facilities", path: "/facilities" }, { label: "Schedule", path: "/calendar" },
-    { label: "Admin Panel", path: "/admin" }, { label: "Profile", path: "/profile" },
+    { label: "Facilities", path: "/facilities" },
+    { label: "Schedule", path: "/calendar" },
+    { label: "Admin Panel", path: "/admin" },
+    { label: "Profile", path: "/profile" },
   ];
   const menuItems = user?.role === "ADMIN" ? adminMenuItems : userMenuItems;
 
   return (
     <nav className="lg:hidden sticky top-0 z-50 w-full border-b border-default-100 bg-background/80 backdrop-blur-md">
       <header className="flex h-20 items-center justify-between gap-4 px-6 py-4">
-        <Link className="flex items-center gap-2" to="/" onClick={() => setIsMenuOpen(false)}>
+        <Link
+          className="flex items-center gap-2"
+          to="/"
+          onClick={() => setIsMenuOpen(false)}
+        >
           <div className="p-2 bg-accent text-accent-foreground rounded-xl shadow-lg shadow-accent/20 flex items-center justify-center">
-            <svg fill="currentColor" height="18" viewBox="0 0 24 24" width="18"><path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" /></svg>
+            <svg fill="currentColor" height="18" viewBox="0 0 24 24" width="18">
+              <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" />
+            </svg>
           </div>
-          <p className="font-black text-lg tracking-tighter text-default-900 dark:text-white">ROOMSYNC</p>
+          <p className="font-black text-lg tracking-tighter text-default-900 dark:text-white">
+            ROOMSYNC
+          </p>
         </Link>
 
         <div className="flex items-center gap-4">
           <ThemeSwitcher />
-          <Link aria-label="Notifications" className="relative" to={user?.role === "ADMIN" ? "/admin" : "/notifications"}>
-            <Bell className="text-default-500 hover:text-primary transition-colors" size={20} />
+          <Link
+            aria-label="Notifications"
+            className="relative"
+            to={user?.role === "ADMIN" ? "/admin" : "/notifications"}
+          >
+            <Bell
+              className="text-default-500 hover:text-primary transition-colors"
+              size={20}
+            />
             {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-danger text-white text-[9px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
+              <span
+                aria-label={`${unreadCount} unread notifications`}
+                className="absolute -top-2 -right-2 bg-danger text-white text-[9px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none"
+              >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </Link>
-          <Button isIconOnly aria-label={isMenuOpen ? "Close menu" : "Open menu"} className="rounded-xl border-default-200" variant="ghost" onPress={() => setIsMenuOpen(!isMenuOpen)}>
+          <Button
+            isIconOnly
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            className="rounded-xl border-default-200"
+            variant="ghost"
+            onPress={() => setIsMenuOpen(!isMenuOpen)}
+          >
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </Button>
         </div>
@@ -82,13 +132,25 @@ export const Navbar = () => {
       {isMenuOpen && (
         <div className="absolute top-20 left-0 w-full bg-background border-b border-default-100 p-6 flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300">
           {menuItems.map((item) => (
-            <Link key={item.path} className={`text-lg font-black px-4 py-3 rounded-2xl ${location.pathname === item.path ? "bg-primary/10 text-primary" : "text-default-500"}`}
-              to={item.path} onClick={() => setIsMenuOpen(false)}>
+            <Link
+              key={item.path}
+              className={`text-lg font-black px-4 py-3 rounded-2xl ${location.pathname === item.path ? "bg-primary/10 text-primary" : "text-default-500"}`}
+              to={item.path}
+              onClick={() => setIsMenuOpen(false)}
+            >
               {item.label}
             </Link>
           ))}
           <hr className="border-default-100 my-2" />
-          <Button className="h-14 rounded-2xl font-black" variant="danger-soft" onPress={() => { logout(); navigate("/login"); setIsMenuOpen(false); }}>
+          <Button
+            className="h-14 rounded-2xl font-black"
+            variant="danger-soft"
+            onPress={() => {
+              logout();
+              navigate("/login");
+              setIsMenuOpen(false);
+            }}
+          >
             <LogOut className="mr-2" size={20} /> Sign Out
           </Button>
         </div>

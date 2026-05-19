@@ -55,6 +55,7 @@ export default function NotificationsPage() {
   const [dbNotifications, setDbNotifications] = useState<DbNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const { notifications: sseEvents, markAllRead } = useNotifications();
 
   const fetchNotifications = useCallback(async (showLoader = true) => {
@@ -64,6 +65,8 @@ export default function NotificationsPage() {
       setRefreshing(true);
     }
 
+    setFetchError("");
+
     try {
       const response = await api.get("/notifications");
       const data: DbNotification[] = response.data.data || [];
@@ -72,6 +75,7 @@ export default function NotificationsPage() {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("Error fetching notifications", err);
+      setFetchError("Failed to load notifications. Check your connection.");
     } finally {
       if (showLoader) {
         setLoading(false);
@@ -159,6 +163,16 @@ export default function NotificationsPage() {
           Refresh
         </Button>
       </div>
+
+      {fetchError && (
+        <div
+          className="bg-danger/10 text-danger p-4 rounded-lg border border-danger/20 flex items-center gap-3 font-bold"
+          role="alert"
+        >
+          <XCircle size={18} />
+          {fetchError}
+        </div>
+      )}
 
       {allNotifications.length === 0 ? (
         <Card className="p-16 flex flex-col items-center justify-center text-center bg-default-50/30 border-dashed border-2 border-default-200 rounded-[2.5rem]">

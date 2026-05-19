@@ -88,8 +88,31 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        Loading...
+      <div
+        aria-busy="true"
+        aria-label="Loading profile"
+        className="max-w-2xl mx-auto py-12 px-4"
+      >
+        <div className="flex flex-col gap-2 mb-10 items-center">
+          <div className="h-10 w-64 rounded-lg bg-default-100 animate-pulse" />
+          <div className="h-4 w-48 rounded-lg bg-default-100 animate-pulse" />
+        </div>
+        <div className="p-10 border border-default-200 rounded-xl bg-surface/60">
+          <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="w-24 h-24 rounded-[2rem] bg-default-100 animate-pulse" />
+            <div className="h-6 w-32 rounded-lg bg-default-100 animate-pulse" />
+            <div className="h-4 w-20 rounded-lg bg-default-100 animate-pulse" />
+          </div>
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-16 rounded-lg bg-default-100 animate-pulse"
+              />
+            ))}
+          </div>
+          <div className="h-14 rounded-xl bg-default-100 animate-pulse mt-8" />
+        </div>
       </div>
     );
   }

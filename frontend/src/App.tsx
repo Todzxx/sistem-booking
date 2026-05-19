@@ -46,6 +46,13 @@ function App() {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300">
+      <a
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg focus:font-bold focus:text-sm"
+        href="#main-content"
+      >
+        Skip to content
+      </a>
+
       {/* Background pattern dekoratif */}
       <div
         className="pointer-events-none fixed inset-0 z-[-1] opacity-[0.03] dark:opacity-[0.05]"
@@ -66,6 +73,7 @@ function App() {
                 ? "flex-grow px-4 py-8 sm:px-6"
                 : "container mx-auto max-w-7xl flex-grow px-6 pb-20 pt-12"
             }
+            id="main-content"
           >
             <Suspense fallback={<PageLoader />}>
               <Routes>
