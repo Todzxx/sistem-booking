@@ -6,7 +6,7 @@
 
 const { db } = require('../../config/db');
 const { bookings, facilities } = require('../../db/schema');
-const { eq, ne, and, or, lt, lte, gte, inArray, desc, asc, sql } = require('drizzle-orm');
+const { eq, ne, and, or, lt, lte, gte, gt, inArray, desc, asc, sql } = require('drizzle-orm');
 const { v4: uuidv4 } = require('uuid');
 const { BOOKING_STATUS } = require('../../constants');
 const AppError = require('../../utils/AppError');
