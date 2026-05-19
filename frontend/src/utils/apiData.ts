@@ -4,7 +4,10 @@
 // Menangani: array langsung, { items: [...] }, atau properti fallback
 // ============================================================
 
-export function extractCollection<T>(payload: unknown, fallbackKeys: string[] = []): T[] {
+export function extractCollection<T>(
+  payload: unknown,
+  fallbackKeys: string[] = [],
+): T[] {
   if (Array.isArray(payload)) return payload as T[];
 
   if (!payload || typeof payload !== "object") return [];

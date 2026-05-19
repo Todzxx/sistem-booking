@@ -5,12 +5,16 @@
 // ============================================================
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
+
 import { AuthProvider } from "./contexts/AuthContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 export function Provider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider enableSystem attribute="class" defaultTheme="system">
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <NotificationProvider>{children}</NotificationProvider>
+      </AuthProvider>
     </NextThemesProvider>
   );
 }

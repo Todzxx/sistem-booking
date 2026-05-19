@@ -6,6 +6,7 @@
 // ============================================================
 
 import { createContext, useContext, useEffect, useState } from "react";
+
 import api, { setAccessToken } from "@/config/api";
 
 export interface User {
@@ -39,7 +40,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Coba refresh token session — jika cookie masih valid, server return token baru
     if (!pendingRefresh) {
-      pendingRefresh = api.post("/auth/refresh").finally(() => { pendingRefresh = null; });
+      pendingRefresh = api.post("/auth/refresh").finally(() => {
+        pendingRefresh = null;
+      });
     }
 
     pendingRefresh
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.data?.data?.token) {
           setAccessToken(res.data.data.token);
           setToken(res.data.data.token);
+
           return api.get("/auth/me"); // ambil profil user
         }
         throw new Error("No token");
@@ -58,22 +62,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        setToken(null); setUser(null); setAccessToken(null);
+        setToken(null);
+        setUser(null);
+        setAccessToken(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const login = (newToken: string, _newRefreshToken: string, userData: User) => {
-    setAccessToken(newToken); setToken(newToken); setUser(userData);
+  const login = (
+    newToken: string,
+    _newRefreshToken: string,
+    userData: User,
+  ) => {
+    setAccessToken(newToken);
+    setToken(newToken);
+    setUser(userData);
   };
 
   const logout = async () => {
-    try { await api.post("/auth/logout"); } catch { /* ignore */ } finally {
-      setAccessToken(null); setToken(null); setUser(null);
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      /* ignore */
+    } finally {
+      setAccessToken(null);
+      setToken(null);
+      setUser(null);
     }
   };
 
@@ -86,6 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
+
+  if (context === undefined)
+    throw new Error("useAuth must be used within an AuthProvider");
+
   return context;
 };
